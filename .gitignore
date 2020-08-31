@@ -1,0 +1,9 @@
+caffe_pretrainedModel/
+models_master/
+out_images/
+ssd_mobilenet_v1_coco_2017_11_17/
+test_images/git_ignore/
+tf_pretrainedModel/
+.idea/
+__pycache__/
+ssd_mobilenet_v1_coco_2017_11_17.tar.gz
