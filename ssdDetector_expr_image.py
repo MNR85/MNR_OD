@@ -17,8 +17,6 @@ CLASSES = ('background',
 COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
 def getBoxedImage(origimg, net_out):
-    print("aaaa")
-
     h = origimg.shape[0]
     w = origimg.shape[1]
     box = net_out['detection_out'][0,0,:,3:7] * np.array([w, h, w, h])
@@ -27,6 +25,7 @@ def getBoxedImage(origimg, net_out):
     conf = net_out['detection_out'][0,0,:,2]
     
     box, conf, cls = (box.astype(np.int32), conf, cls)
+    print("aaaa, ",str(len(box)))
     for i in range(len(box)):
         p1 = (box[i][0], box[i][1])
         p2 = (box[i][2], box[i][3])
