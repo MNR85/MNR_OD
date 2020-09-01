@@ -33,7 +33,7 @@ from tensorflow.python.compiler.tensorrt import trt_convert as trt
 # tf.config.gpu.set_per_process_memory_growth(True)
 #
 gpus = tf.config.experimental.list_physical_devices('GPU')
-tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=1024)])
+tf.config.experimental.set_virtual_device_configuration(gpus[0], [tf.config.experimental.VirtualDeviceConfiguration(memory_limit=3024)])
 # gpus = tf.config.experimental.list_physical_devices('GPU')
 # if gpus:
 #   try:
@@ -73,6 +73,7 @@ print(infer.structured_outputs)
 print("infer size: ", sys.getsizeof(infer))
 gc.collect()
 im = cv2.imread("test_images/image1.jpg")
+im = cv2.resize(im,(300,300))
 ##cv2_imshow(im)
 input_tensor = np.expand_dims(im, axis=0)
 start_time = time.time()
