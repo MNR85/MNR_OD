@@ -21,7 +21,7 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
-
+import gc
 from tensorflow.python.compiler.tensorrt import trt_convert as trt
 
 # device_name = tf.test.gpu_device_name()
@@ -72,12 +72,12 @@ def inference(i,return_dict):
   infer = detect_fn.signatures["serving_default"]
   print(infer.structured_outputs)
   print("infer size: ", sys.getsizeof(infer))
+  gc.collect()
   # return_dict[0]=infer
   im = cv2.imread("test_images/image1.jpg")
   ##cv2_imshow(im)
   # image_np = load_image_into_numpy_array("/content/drive/My Drive/Colab Notebooks/dog.jpg")
   input_tensor = np.expand_dims(im, axis=0)
-
   start_time = time.time()
   detections = infer(tf.constant(input_tensor))
   end_time = time.time()
