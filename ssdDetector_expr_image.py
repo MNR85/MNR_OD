@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
     frameCount = 0
     p = Process(name='popThread',target=detector.getImageFromQThread)#, args=[detector.runThread])
-    p.daemon = True
+    p.daemon = True #background run
     if not args['serial']:       
         p.start()
     if(not detector.netIsInit.value):
