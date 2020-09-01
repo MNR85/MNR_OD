@@ -120,7 +120,7 @@ class Detector:
         t2 = time.time()
         self.trasformTimes.put(t2-t1)
         res = self.forwardNet(trans)
-        self.trackObject(res)
+        #self.trackObject(res)
         return res
 
     def serialDetector2Stage(self, img):
