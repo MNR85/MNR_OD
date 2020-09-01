@@ -28,6 +28,7 @@ class Arbiter:
         self.trackerP.join()
 
     def newImage(self, frame):
+        print ("new frame")
         if(not self.processingCNN.value):
             self.detectorInQ.put(frame)
         self.trackerQ.put(frame)
@@ -35,6 +36,7 @@ class Arbiter:
     def detectorThread(self):
         while (self.runThread.value):
             if (not self.detectorInQ.empty()):
+                print("detect")
                 self.processingCNN.value=True
                 frame = self.detectorInQ.get()
                 detections = self.detector.serialDetector(frame)
@@ -42,20 +44,23 @@ class Arbiter:
                 self.processingCNN.value = False
 
     def trackerThread(self):
-        detection=0
+        detection=[0, 0, 0, 0]
         while (self.runThread.value):
             if(not self.processingCNN.value and not self.detectorOutQ.empty()):
                 detection = self.detectorOutQ.get()
                 frame = self.trackerQ.get()
                 self.cvTracker.refreshTrack(frame,detection)
                 while(not self.trackerQ.empty()):
+                    print("track 111")
                     frame = self.trackerQ.get()
                     (success, boxes) = self.cvTracker.track(frame)
                     self.draw(frame,boxes,detection)
             elif(self.processingCNN.value):
                 while (not self.trackerQ.empty()):
+                    print("track 222")
                     frame = self.trackerQ.get()
                     (success, boxes) = self.cvTracker.track(frame)
+                    print("track 333")
                     self.draw(frame, boxes, detection)
 
     def draw(self, frame, boxes, detection):
