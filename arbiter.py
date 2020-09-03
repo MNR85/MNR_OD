@@ -35,16 +35,14 @@ class Arbiter:
         self.detectorP.join()
         self.trackerP.join()
         self.getResultP.join()
+
     def newImage(self, frame):
         self.counter=self.counter+1
         if(not self.processingCNN.value): # and self.counter%60==0):
-            print("imageQ ", self.imageQ.qsize(), "detectQ ", self.detectorOutQ.qsize(), "TrackerQ ",self.trackerQ.qsize())
+            # print("imageQ ", self.imageQ.qsize(), "detectQ ", self.detectorOutQ.qsize(), "TrackerQ ",self.trackerQ.qsize())
             while(not self.trackerQ.empty()): #empty Q
                 self.trackerQ.get()
                 self.trackerQF.get()
-            # if (not self.detectorOutQ.empty()):
-            #     detection = self.detectorOutQ.get()
-            #     self.cvTracker.refreshTrack(frame, detection)
             while(not self.imageQ.empty()): # put all image in tracker (image between current cnn and last cnn)
                 self.trackerQ.put(self.imageQ.get())
                 self.trackerQF.put(False)
@@ -85,7 +83,7 @@ class Arbiter:
                 im=self.resultQ.get()
                 # cv2.imwrite("test_images/"+str(counter)+".jpg", im)
                 # cv2.imshow("tracker",im)
-                # cv2.waitKey(0)
+                # cv2.waitKey(1)
                 # counter=counter+1
         fps.stop()
         print("Output frame:")
@@ -101,16 +99,18 @@ class Arbiter:
         return frame
 
 
-arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel','mosse')
+arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel','mosse') #'mosse')
 
 cap = cv2.VideoCapture(1)
 fps = FPS().start()
+counter=0
 try:
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
             fps.update()
             cv2.imshow("Raw", frame)
+            counter=counter+1
             key = cv2.waitKey(1) & 0xFF
             # if the `q` key was pressed, break from the loop
             if key == ord("q"):
@@ -125,4 +125,4 @@ cv2.destroyAllWindows()
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
-print("Frame processed: ",str(arbiter.counter))
+print("Frame processed: ",str(arbiter.counter)," ,Frame Input: "+str(counter))

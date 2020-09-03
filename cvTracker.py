@@ -13,6 +13,12 @@ class cvTracker():
         "medianflow": cv2.TrackerMedianFlow_create,
         "mosse": cv2.TrackerMOSSE_create
         }
+        self.CLASSES = ('background',
+                   'aeroplane', 'bicycle', 'bird', 'boat',
+                   'bottle', 'bus', 'car', 'cat', 'chair',
+                   'cow', 'diningtable', 'dog', 'horse',
+                   'motorbike', 'person', 'pottedplant',
+                   'sheep', 'sofa', 'train', 'tvmonitor')
         self.trackType=trackType
         self.trackers = cv2.MultiTracker_create()
 
@@ -30,12 +36,24 @@ class cvTracker():
         # initialize OpenCV's special multi-object tracker
         self.trackers = cv2.MultiTracker_create()
         for i in range(len(cls)):
-            box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
-            # print(box)
-            tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
-            (startX, startY, endX, endY) = box.astype("int")
-            box = (startX, startY, endX - startX, endY - startY)
-            self.trackers.add(tracker, frame, box)
+            if(conf[i]>0.5):
+                print("%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i]))
+                box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
+                # print(box)
+                tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
+                (startX, startY, endX, endY) = box.astype("int")
+                if(startX<0):
+                    startX=0
+                if(startY<0):
+                    startY=0
+                if(endX>w-1):
+                    endX=w-1
+                if(endY>h-1):
+                    endY=h-1
+                box = (startX, startY, endX - startX, endY - startY)
+                print(box)
+                self.trackers.add(tracker, frame, box)
+        print()
 
     def track(self, frame):
         # grab the updated bounding box coordinates (if any) for each
