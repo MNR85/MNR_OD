@@ -31,7 +31,7 @@ class cvTracker():
         self.trackers = cv2.MultiTracker_create()
         for i in range(len(cls)):
             box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
-            print(box)
+            # print(box)
             tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
             (startX, startY, endX, endY) = box.astype("int")
             box = (startX, startY, endX - startX, endY - startY)
