@@ -42,15 +42,13 @@ class Arbiter:
             while(not self.trackerQ.empty()): #empty Q
                 self.trackerQ.get()
                 self.trackerQF.get()
-            if (not self.detectorOutQ.empty()):
-                detection = self.detectorOutQ.get()
-                self.cvTracker.refreshTrack(frame, detection)
+            # if (not self.detectorOutQ.empty()):
+            #     detection = self.detectorOutQ.get()
+            #     self.cvTracker.refreshTrack(frame, detection)
             while(not self.imageQ.empty()): # put all image in tracker (image between current cnn and last cnn)
                 self.trackerQ.put(self.imageQ.get())
                 self.trackerQF.put(False)
             self.detectorInQ.put(frame)
-        # if(self.trackerQ.qsize()>5):  # for bug that stacks images and low memory in long run
-        #     self.trackerQ.get() # destroy frame
         self.imageQ.put(frame)
         self.trackerQ.put(frame)
         self.trackerQF.put(True)
@@ -67,19 +65,28 @@ class Arbiter:
     def trackerThread(self):
         detection=[0, 0, 0, 0]
         while (self.runThread.value):
+            if (not self.detectorOutQ.empty()):
+                detection = self.detectorOutQ.get()
+                self.cvTracker.refreshTrack(frame, detection)
             if (not self.trackerQ.empty()):
                 frame = self.trackerQ.get()
                 firstTime = self.trackerQF.get()
-                print("track ", str(firstTime), " len=?len: ",str(self.trackerQ.qsize()),"=?",str(self.trackerQF.qsize()))
+                # print("track ", str(firstTime), " len=?len: ",str(self.trackerQ.qsize()),"=?",str(self.trackerQF.qsize()))
                 (success, boxes) = self.cvTracker.track(frame)
-                self.resultQ.put(self.draw(frame, boxes, detection))
+                if(firstTime):
+                    self.resultQ.put(self.draw(frame, boxes, detection))
 
     def getResultThread(self):
         fps = FPS().start()
+        # counter=0
         while (self.runThread.value):
             if(not self.resultQ.empty()):
                 fps.update()
-                cv2.imshow("out", self.resultQ.get())
+                im=self.resultQ.get()
+                # cv2.imwrite("test_images/"+str(counter)+".jpg", im)
+                # cv2.imshow("tracker",im)
+                # cv2.waitKey(0)
+                # counter=counter+1
         fps.stop()
         print("Output frame:")
         print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
@@ -97,12 +104,12 @@ class Arbiter:
 arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel','mosse')
 
 cap = cv2.VideoCapture(1)
-fpsIn = FPS().start()
+fps = FPS().start()
 try:
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret == True:
-            fpsIn.update()
+            fps.update()
             cv2.imshow("Raw", frame)
             key = cv2.waitKey(1) & 0xFF
             # if the `q` key was pressed, break from the loop
@@ -111,10 +118,11 @@ try:
             arbiter.newImage(frame)
 except:
     print("Exception")
-fpsIn.stop()
+fps.stop()
 arbiter.stop()
 cap.release()
+cv2.destroyAllWindows()
 print("Input frame:")
-print("[INFO] elasped time: {:.2f}".format(fpsIn.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fpsIn.fps()))
+print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
+print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 print("Frame processed: ",str(arbiter.counter))
