@@ -46,7 +46,17 @@ class Arbiter:
 
     def stop(self):
         print("signal to stop. "),
+        haltDetect=0
         while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
+            if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
+                haltDetect = haltDetect+1
+
+            lastT = self.trackerQ.qsize()
+            lastD = self.detectorInQ.qsize()
+            lastR = self.resultQ.qsize()
+            if(haltDetect>10):
+                print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
+                break
             time.sleep(0.01)
         self.runThread.value = False
         print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
