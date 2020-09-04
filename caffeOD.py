@@ -9,11 +9,16 @@ gst_str = ('v4l2src device=/dev/video{} ! '
 cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 # cap = cv2.VideoCapture("test_images/soccer_01.mp4")#"test_images/soccer_01.mp4")#1)
 fps = FPS().start()
+fps2 = FPS().start()
 counter=0
 try:
     while(cap.isOpened() and counter < 20):
         ret, frame = cap.read()
         if ret == True:
+            if (not arbiter.resultQ.empty()):
+                fps2.update()
+                # cv2.imshow("Result", arbiter.resultQ.get())
+
             fps.update()
             # cv2.imshow("Raw", frame)
             counter=counter+1
@@ -25,6 +30,7 @@ try:
 except:
     print("Exception")
 fps.stop()
+fps2.stop()
 arbiter.stop()
 cap.release()
 # cv2.destroyAllWindows()
@@ -34,4 +40,4 @@ print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 print("Frame Input: "+str(counter))
 print("Result counter: ", str(arbiter.resultCounter.value),"CnnCounter counter: ", str(arbiter.CnnCounter.value),"TrackCounter counter: ", str(arbiter.TrackCounter.value))
 print("Result q: ", str(arbiter.resultQ.qsize()),"CnnQ counter: ", str(arbiter.detectorInQ.qsize()),"TrackQ counter: ", str(arbiter.trackerQ.qsize()))
-exit(0)
+exit(1)

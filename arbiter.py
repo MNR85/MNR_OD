@@ -38,7 +38,7 @@ class Arbiter:
         self.getResultP.daemon = True  # background run
         self.detectorP.start()
         self.trackerP.start()
-        self.getResultP.start()
+        # self.getResultP.start()
         print('waiting for init net...')
         while not self.initCNN.value:
             time.sleep(0.1)
@@ -53,7 +53,6 @@ class Arbiter:
         while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
             if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
                 haltDetect = haltDetect+1
-
             lastT = self.trackerQ.qsize()
             lastD = self.detectorInQ.qsize()
             lastR = self.resultQ.qsize()
@@ -127,7 +126,7 @@ class Arbiter:
                 firstTime = trackerQF.get()
                 (success, boxes) = self.cvTracker.track(frame)
                 if (firstTime):
-                    # resultQ.put(self.draw(frame, boxes, detection))
+                    resultQ.put(self.draw(frame, boxes, detection))
                     TrackCounter.value = TrackCounter.value + 1
         print("Done tracker, ", str(trackerQ.qsize()),str(resultQ.qsize()))
 
