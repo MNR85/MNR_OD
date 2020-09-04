@@ -60,7 +60,7 @@ class Arbiter:
             if(haltDetect>10):
                 print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
                 break
-            time.sleep(0.01)
+            time.sleep(0.5)
         self.runThread.value = False
         print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
               ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
