@@ -54,9 +54,9 @@ class Arbiter:
               ", resultQ", str(self.resultQ.qsize()))
         # print("terminate Ps, "),
         # terminate processes before join
-        # self.detectorP.terminate()
-        # self.trackerP.terminate()
-        # self.getResultP.terminate()
+        self.detectorP.terminate()
+        self.trackerP.terminate()
+        self.getResultP.terminate()
         # print("join Ps")
         # join process
         self.detectorP.join()
@@ -104,7 +104,7 @@ class Arbiter:
         print("trackerThread id = ", os.getpid())
         detection = [0, 0, 0, 0]
         while (runThread.value == True):
-            # print("xxxx",str(runThread.value), str(trackerQ.qsize()))
+            print("aaaa",str(runThread.value), str(trackerQ.qsize()))
             if (not detectorOutQ.empty()):
                 detection = detectorOutQ.get()
                 frame = detectorImage.get()
@@ -123,6 +123,7 @@ class Arbiter:
         fps = FPS().start()
         counter = 0
         while (runThread.value):
+            print("bbbb", str(runThread.value), str(resultQ.qsize()))
             if (not resultQ.empty()):
                 fps.update()
                 counter = counter + 1
