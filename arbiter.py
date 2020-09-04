@@ -68,12 +68,12 @@ class Arbiter:
         # terminate processes before join
         self.detectorP.terminate()
         self.trackerP.terminate()
-        self.getResultP.terminate()
+        # self.getResultP.terminate()
         # print("join Ps")
         # join process
         self.detectorP.join()
         self.trackerP.join()
-        self.getResultP.join()
+        # self.getResultP.join()
         print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
               ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
               ", resultQ", str(self.resultQ.qsize()))
