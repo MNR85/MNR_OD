@@ -47,6 +47,9 @@ class Arbiter:
     def stop(self):
         print("signal to stop. "),
         haltDetect=0
+        lastT=0
+        lastD=0
+        lastR=0
         while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
             if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
                 haltDetect = haltDetect+1
@@ -98,7 +101,7 @@ class Arbiter:
         detector.initNet()
         initCNN.value = True
         while (runThread.value):
-            print("zzz", str(runThread.value), str(detectorInQ.qsize()), str(self.trackerQ.qsize()), str(self.resultQ.qsize()))
+            # print("zzz", str(runThread.value), str(detectorInQ.qsize()), str(self.trackerQ.qsize()), str(self.resultQ.qsize()))
             if (not detectorInQ.empty()):
                 if (detectorInQ.qsize() != 1):
                     raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
@@ -114,7 +117,7 @@ class Arbiter:
         print("trackerThread id = ", os.getpid())
         detection = [0, 0, 0, 0]
         while (runThread.value == True):
-            print("aaaa",str(runThread.value), str(trackerQ.qsize()))
+            # print("aaaa",str(runThread.value), str(trackerQ.qsize()))
             if (not detectorOutQ.empty()):
                 detection = detectorOutQ.get()
                 frame = detectorImage.get()
@@ -133,7 +136,7 @@ class Arbiter:
         fps = FPS().start()
         counter = 0
         while (runThread.value):
-            print("bbbb", str(runThread.value), str(resultQ.qsize()))
+            # print("bbbb", str(runThread.value), str(resultQ.qsize()))
             if (not resultQ.empty()):
                 fps.update()
                 counter = counter + 1
