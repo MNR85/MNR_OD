@@ -14,7 +14,7 @@ class Arbiter:
         self.trackerQ = Queue(maxsize=0)
         self.trackerQF = Queue(maxsize=0) # check if frame is first time or second time for processing
         self.resultQ = Queue(maxsize=0)
-        self.cvTracker =  cvTracker.cvTracker(trackType)
+        self.cvTracker = cvTracker.cvTracker(trackType)
         self.detector = MNR_Net.Detector(prototxt, model)
         self.useGpu = useGpu
         self.initCNN = Value('b', False)
@@ -110,7 +110,7 @@ class Arbiter:
 
 arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel', True, 'mosse') #'mosse')
 
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture("test_images/soccer_01.mp4") #1)
 fps = FPS().start()
 counter=0
 try:
@@ -118,19 +118,19 @@ try:
         ret, frame = cap.read()
         if ret == True:
             fps.update()
-            cv2.imshow("Raw", frame)
+            # cv2.imshow("Raw", frame)
             counter=counter+1
-            key = cv2.waitKey(1) & 0xFF
-            # if the `q` key was pressed, break from the loop
-            if key == ord("q"):
-                break
+            # key = cv2.waitKey(1) & 0xFF
+            # # if the `q` key was pressed, break from the loop
+            # if key == ord("q"):
+            #     break
             arbiter.newImage(frame)
 except:
     print("Exception")
 fps.stop()
 arbiter.stop()
 cap.release()
-cv2.destroyAllWindows()
+# cv2.destroyAllWindows()
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
