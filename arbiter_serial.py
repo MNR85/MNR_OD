@@ -38,28 +38,32 @@ class Arbiter:
         self.tdAvg=0
         self.ttAvg=0
         self.td2 = 0
+        self.det=0
+        self.tra=0
 
     def newImage(self, frame):
-        if (self.counter%10==0):
+        if (self.counter%5==0):
             td1=time.time()
             detections = self.detector.serialDetector(frame)
             self.td2=time.time()-td1
+            self.det = self.det + self.td2
             if(self.tdAvg==0):
                 self.tdAvg=self.td2
             self.tdAvg = (self.tdAvg+self.td2)/2
             print("detected: ",len(detections['detection_out'][0, 0, :, 1]))
             # return frame
             self.cvTracker.refreshTrack(frame, detections['detection_out'])
-
-        tt1=time.time()
-        (success, boxes) = self.cvTracker.track(frame)
-        tt2=time.time()-tt1
-        if (self.ttAvg == 0):
-            self.ttAvg = tt2
-        self.ttAvg = (self.ttAvg + tt2) / 2
-        if (self.ratioAvg == 0):
-            self.ratioAvg = (self.td2/tt2)
-        self.ratioAvg = (self.ratioAvg + (self.td2/tt2)) / 2
+        else:
+            tt1=time.time()
+            (success, boxes) = self.cvTracker.track(frame)
+            tt2=time.time()-tt1
+            self.tra = self.tra + tt2
+            if (self.ttAvg == 0):
+                self.ttAvg = tt2
+            self.ttAvg = (self.ttAvg + tt2) / 2
+            if (self.ratioAvg == 0):
+                self.ratioAvg = (self.td2/tt2)
+            self.ratioAvg = (self.ratioAvg + (self.td2/tt2)) / 2
         self.counter =self.counter+1
         return frame
         # print("ratio: ",str(td2/tt2), ", track: ", str(tt2), ", detection: ", str(td2), ", fps~ ",str(1000000/(td2*td2/tt2)))
@@ -83,13 +87,18 @@ gst_str = ('v4l2src device=/dev/video{} ! '
 cap = cv2.VideoCapture("test_images/soccer_01.mp4")#"test_images/soccer_01.mp4")#1)
 fps = FPS().start()
 counter=0
+t2=0
 try:
+
     while(cap.isOpened() and counter < 100):
         ret, frame = cap.read()
         if ret == True:
             fps.update()
+            t1 = time.time()
             res = arbiter.newImage(frame)
+            t2 = t2 + (time.time()-t1)
         counter = counter + 1
+    print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det))
 except str:
     print("Exception")
 fps.stop()
