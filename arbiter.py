@@ -80,7 +80,7 @@ class Arbiter:
         print("All process finished")
 
     def newImage(self, frame):
-        # print("detectorInQ: ",str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ",str(self.trackerQ.qsize()),", resultQ",str(self.resultQ.qsize()))
+        print("detectorInQ: ",str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ",str(self.trackerQ.qsize()),", resultQ",str(self.resultQ.qsize()))
         if (not self.processingCNN.value):  # and self.counter%60==0):
             while (not self.trackerQ.empty()):  # empty Q
                 self.trackerQ.get()
@@ -100,7 +100,8 @@ class Arbiter:
         detector.initNet()
         initCNN.value = True
         while (runThread.value):
-            # print("zzz", str(runThread.value), str(detectorInQ.qsize()), str(self.trackerQ.qsize()), str(self.resultQ.qsize()))
+            print("zzz", str(runThread.value), str(detectorInQ.qsize()), str(self.trackerQ.qsize()),
+                  str(self.resultQ.qsize()))
             if (not detectorInQ.empty()):
                 if (detectorInQ.qsize() != 1):
                     raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
@@ -116,7 +117,7 @@ class Arbiter:
         print("trackerThread id = ", os.getpid())
         detection = [0, 0, 0, 0]
         while (runThread.value == True):
-            # print("aaaa",str(runThread.value), str(trackerQ.qsize()))
+            print("aaaa", str(runThread.value), str(trackerQ.qsize()))
             if (not detectorOutQ.empty()):
                 detection = detectorOutQ.get()
                 frame = detectorImage.get()

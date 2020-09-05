@@ -37,7 +37,7 @@ class cvTracker():
         self.trackers = cv2.MultiTracker_create()
         for i in range(len(cls)):
             if(conf[i]>0.5):
-                print("%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i]))
+                # print("%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i]))
                 box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
                 # print(box)
                 tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
@@ -51,9 +51,9 @@ class cvTracker():
                 if(endY>h-1):
                     endY=h-1
                 box = (startX, startY, endX - startX, endY - startY)
-                print(box)
+                # print(box)
                 self.trackers.add(tracker, frame, box)
-        print()
+        # print()
 
     def track(self, frame):
         # grab the updated bounding box coordinates (if any) for each
