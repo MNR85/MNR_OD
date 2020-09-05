@@ -37,16 +37,18 @@ class Arbiter:
         self.ratioAvg=0
         self.tdAvg=0
         self.ttAvg=0
+        self.td2 = 0
 
     def newImage(self, frame):
         if (self.counter%10==0):
             td1=time.time()
             detections = self.detector.serialDetector(frame)
-            td2=time.time()-td1
+            self.td2=time.time()-td1
             if(self.tdAvg==0):
-                self.tdAvg=td2
-            self.tdAvg = (self.tdAvg+td2)/2
+                self.tdAvg=self.td2
+            self.tdAvg = (self.tdAvg+self.td2)/2
             print("detected: ",len(detections['detection_out'][0, 0, :, 1]))
+            # return frame
             self.cvTracker.refreshTrack(frame, detections['detection_out'])
 
         tt1=time.time()
@@ -56,10 +58,14 @@ class Arbiter:
             self.ttAvg = tt2
         self.ttAvg = (self.ttAvg + tt2) / 2
         if (self.ratioAvg == 0):
-            self.ratioAvg = (td2/tt2)
-        self.ratioAvg = (self.ratioAvg + (td2/tt2)) / 2
-        print("ratio: ",str(td2/tt2), ", track: ", str(tt2), ", detection: ", str(td2), ", fps~ ",str(1000000/(td2*td2/tt2)))
-        return self.draw(frame, boxes, detections['detection_out'])
+            self.ratioAvg = (self.td2/tt2)
+        self.ratioAvg = (self.ratioAvg + (self.td2/tt2)) / 2
+        self.counter =self.counter+1
+        return frame
+        # print("ratio: ",str(td2/tt2), ", track: ", str(tt2), ", detection: ", str(td2), ", fps~ ",str(1000000/(td2*td2/tt2)))
+        # return self.draw(frame, boxes, detections['detection_out'])
+
+
 
     def draw(self, frame, boxes, detection):
         for box in boxes:
