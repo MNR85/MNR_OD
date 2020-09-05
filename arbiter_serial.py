@@ -98,7 +98,7 @@ try:
         if ret == True:
             fps.update()
             t1 = time.time()
-            res = arbiter.newImage(frame)
+            res = arbiter.newImage(cv2.resize(frame, (300, 300)) )
             t2 = t2 + (time.time()-t1)
         counter = counter + 1
     print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det)+", initT: "+str(arbiter.itr))
