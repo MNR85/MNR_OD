@@ -40,6 +40,7 @@ class Arbiter:
         self.td2 = 0
         self.det=0
         self.tra=0
+        self.itr=0
 
     def newImage(self, frame):
         if (self.counter%5==0):
@@ -52,7 +53,9 @@ class Arbiter:
             self.tdAvg = (self.tdAvg+self.td2)/2
             print("detected: ",len(detections['detection_out'][0, 0, :, 1]))
             # return frame
+            t1=time.time()
             self.cvTracker.refreshTrack(frame, detections['detection_out'])
+            self.itr = self.itr +time.time()- t1
         else:
             tt1=time.time()
             (success, boxes) = self.cvTracker.track(frame)
@@ -98,7 +101,7 @@ try:
             res = arbiter.newImage(frame)
             t2 = t2 + (time.time()-t1)
         counter = counter + 1
-    print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det))
+    print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det)+", initT: "+str(arbiter.itr))
 except str:
     print("Exception")
 fps.stop()
