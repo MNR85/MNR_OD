@@ -64,7 +64,7 @@ class cvTracker():
         # print()
         t3 = time.time()
         # self.totalT = self.totalT + t3-t2
-        print("create track: ",str(t2-t1),str(t3-t2))#,str(self.totalT))
+        # print("create track: ",str(t2-t1),str(t3-t2))#,str(self.totalT))
 
     def track(self, frame):
         # grab the updated bounding box coordinates (if any) for each
