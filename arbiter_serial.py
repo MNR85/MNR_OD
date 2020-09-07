@@ -61,14 +61,14 @@ class Arbiter:
         else:
             tt1=time.time()
             (success, boxes) = self.cvTracker.track(frame)
-            tt2=time.time()-tt1
-            self.tra = self.tra + time.time()-tt1
+            tt2 = time.time() - tt1
             if (self.ttAvg == 0):
                 self.ttAvg = tt2
             self.ttAvg = (self.ttAvg + tt2) / 2
             if (self.ratioAvg == 0):
                 self.ratioAvg = (self.td2/tt2)
             self.ratioAvg = (self.ratioAvg + (self.td2/tt2)) / 2
+            self.tra = self.tra + time.time() - tt1
             print("Track in: ", str(time.time() - tt1))
         self.counter =self.counter+1
         return frame
@@ -102,6 +102,7 @@ try:
             fps.update()
             t1 = time.time()
             res = arbiter.newImage(cv2.resize(frame, (300, 300)) )
+            # print("newImage in: ",str(time.time()-t1))
             t2 = t2 + (time.time()-t1)
         counter = counter + 1
     print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det)+", initT: "+str(arbiter.itr))
