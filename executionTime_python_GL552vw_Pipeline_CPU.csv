@@ -1,5 +1,0 @@
-mode: serial False, gpu False
-GPU use = False
-transTime, feedNetTime, netTime, thread#1, thread#2
-----------------
-
