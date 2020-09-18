@@ -6,7 +6,7 @@ import numpy as np  # For postProcessing
 from os import system  # For clearing console
 import os
 import sys
-sys.path.append("/home/mnr/caffe-ssd2/python/")
+sys.path.append("/home/mnr/softwares/caffe-ssd/python/")
 import caffe
 
 class ObjectDetect:

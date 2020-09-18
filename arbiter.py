@@ -10,89 +10,138 @@ from imutils.video import FPS
 import cvTracker
 import MNR_Net
 import time
+import numpy as np
 
 
 class Arbiter:
-    def __init__(self, prototxt, model, useGpu, trackType):
-        self.runThread = Value('b', True)
-        self.imageQ = Queue(maxsize=0)
-        self.detectorInQ = Queue(maxsize=0)
-        self.detectorOutQ = Queue(maxsize=0)
-        self.detectorImage = Queue(maxsize=0)
-        self.trackerQ = Queue(maxsize=0)
-        self.trackerQF = Queue(maxsize=0)  # check if frame is first time or second time for processing
-        self.resultQ = Queue(maxsize=0)
+    def __init__(self, prototxt, model, useGpu, serial, trackType, ratio=5):
+        self.serialProcessing=serial
+        self.detectTrackRatio = ratio
         self.cvTracker = cvTracker.cvTracker(trackType)
         self.detector = MNR_Net.Detector(prototxt, model)
         self.useGpu = useGpu
-        self.initCNN = Value('b', False)
-        self.processingCNN = Value('b', False)
-        self.CnnCounter = Value('i', 0)
-        self.TrackCounter = Value('i', 0)
-        self.resultCounter = Value('i', 0)
-        self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.detector, self.runThread, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
-        self.detectorP.daemon = True  # background run
-        self.trackerP = Process(name='track', target=self.trackerThread, args=(self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter))
-        self.trackerP.daemon = True  # background run
-        self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.runThread,self.resultQ,self.resultCounter))# , args=[detector.runThread])
-        self.getResultP.daemon = True  # background run
-        self.detectorP.start()
-        self.trackerP.start()
-        # self.getResultP.start()
-        print('waiting for init net...')
-        while not self.initCNN.value:
-            time.sleep(0.1)
-        print('Ready')
+
+        # --------- times
+        self.trackTime=0
+        self.detectTime = 0
+        self.refreshTime = 0
+        self.boxTime = 0
+        # --------- counters
+        self.detectCount = 0
+        self.trackCount = 0
+
+        # --------- process
+        if(self.serialProcessing):
+            print("serial mode")
+            self.counter=0
+            self.detection=[]
+            self.detector.setRunMode(self.useGpu)
+            self.detector.initNet()
+            print("serial mode init fined")
+        else:
+            self.runThread = Value('b', True)
+            self.imageQ = Queue(maxsize=0)
+            self.detectorInQ = Queue(maxsize=0)
+            self.detectorOutQ = Queue(maxsize=0)
+            self.detectorImage = Queue(maxsize=0)
+            self.trackerQ = Queue(maxsize=0)
+            self.trackerQF = Queue(maxsize=0)  # check if frame is first time or second time for processing
+            self.resultQ = Queue(maxsize=0)
+            self.initCNN = Value('b', False)
+            self.processingCNN = Value('b', False)
+            self.CnnCounter = Value('i', 0)
+            self.TrackCounter = Value('i', 0)
+            self.resultCounter = Value('i', 0)
+            self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.detector, self.runThread, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
+            self.detectorP.daemon = True  # background run
+            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter))
+            self.trackerP.daemon = True  # background run
+            self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.runThread,self.resultQ,self.resultCounter))# , args=[detector.runThread])
+            self.getResultP.daemon = True  # background run
+            self.detectorP.start()
+            self.trackerP.start()
+            # self.getResultP.start()
+            print('waiting for init net...')
+            while not self.initCNN.value:
+                time.sleep(0.1)
+            print('Ready')
 
     def stop(self):
-        print("signal to stop. "),
-        haltDetect=0
-        lastT=0
-        lastD=0
-        lastR=0
-        while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
-            if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
-                haltDetect = haltDetect+1
-            lastT = self.trackerQ.qsize()
-            lastD = self.detectorInQ.qsize()
-            lastR = self.resultQ.qsize()
-            if(haltDetect>10):
-                print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
-                break
-            time.sleep(0.5)
-        self.runThread.value = False
-        print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
-              ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
-              ", resultQ", str(self.resultQ.qsize()))
-        # print("terminate Ps, "),
-        # terminate processes before join
-        self.detectorP.terminate()
-        self.trackerP.terminate()
-        # self.getResultP.terminate()
-        # print("join Ps")
-        # join process
-        self.detectorP.join()
-        self.trackerP.join()
-        # self.getResultP.join()
-        print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
-              ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
-              ", resultQ", str(self.resultQ.qsize()))
-        print("All process finished")
+        if (self.serialProcessing):
+            print("With ration: ",str(self.detectTrackRatio),", Detect time: ",str(self.detectTime), ", refresh time: ",str(self.refreshTime), ", track time: ",str(self.trackTime))
+            print("Detect count: ",str(self.detectCount),  ", track count: ",str(self.trackCount))
+            # print("Nothing to stop in serial mode")
+        else:
+            print("signal to stop. "),
+            haltDetect=0
+            lastT=0
+            lastD=0
+            lastR=0
+            while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
+                if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
+                    haltDetect = haltDetect+1
+                lastT = self.trackerQ.qsize()
+                lastD = self.detectorInQ.qsize()
+                lastR = self.resultQ.qsize()
+                if(haltDetect>10):
+                    print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
+                    break
+                time.sleep(0.5)
+            self.runThread.value = False
+            print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
+                  ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
+                  ", resultQ", str(self.resultQ.qsize()))
+            # print("terminate Ps, "),
+            # terminate processes before join
+            self.detectorP.terminate()
+            self.trackerP.terminate()
+            # self.getResultP.terminate()
+            # print("join Ps")
+            # join process
+            self.detectorP.join()
+            self.trackerP.join()
+            # self.getResultP.join()
+            print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
+                  ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
+                  ", resultQ", str(self.resultQ.qsize()))
+            print("All process finished")
 
     def newImage(self, frame):
-        print("detectorInQ: ",str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ",str(self.trackerQ.qsize()),", resultQ",str(self.resultQ.qsize()))
-        if (not self.processingCNN.value):  # and self.counter%60==0):
-            while (not self.trackerQ.empty()):  # empty Q
-                self.trackerQ.get()
-                self.trackerQF.get()
-            while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
-                self.trackerQ.put(self.imageQ.get())
-                self.trackerQF.put(False)
-            self.detectorInQ.put(frame)
-            self.detectorImage.put(frame)
-        self.imageQ.put(frame)
-        self.trackerQ.put(frame)
-        self.trackerQF.put(True)
+        if (self.serialProcessing):
+            if(self.counter%self.detectTrackRatio==0):
+                t1 = time.time()
+                self.detections = self.detector.serialDetector(frame)
+                t2= time.time()
+                self.cvTracker.refreshTrack(frame, self.detections['detection_out'])
+                t3 = time.time()
+                self.detectTime = self.detectTime + t2 - t1
+                self.refreshTime = self.refreshTime + t3 - t2
+                self.detectCount = self.detectCount + 1
+            else:
+                t3 = time.time()
+                (success, boxes) = self.cvTracker.track(frame)
+                t4=time.time()
+                self.draw(frame, boxes, self.detections['detection_out'])
+                t5=time.time()
+                self.trackTime = self.trackTime + t4 - t3
+                self.boxTime = self.boxTime + t5 - t4
+                self.trackCount = self.trackCount + 1
+
+            self.counter= self.counter+1
+        else:
+            # print("detectorInQ: ",str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ",str(self.trackerQ.qsize()),", resultQ",str(self.resultQ.qsize()))
+            if (not self.processingCNN.value):  # and self.counter%60==0):
+                while (not self.trackerQ.empty()):  # empty Q
+                    self.trackerQ.get()
+                    self.trackerQF.get()
+                while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
+                    self.trackerQ.put(self.imageQ.get())
+                    self.trackerQF.put(False)
+                self.detectorInQ.put(frame)
+                self.detectorImage.put(frame)
+            self.imageQ.put(frame)
+            self.trackerQ.put(frame)
+            self.trackerQF.put(True)
 
     def detectorThread(self,detector, runThread, detectorInQ, detectorOutQ, processingCNN, initCNN, CnnCounter):
         print("detectorThread id = ", os.getpid())
@@ -154,4 +203,12 @@ class Arbiter:
         for box in boxes:
             (x, y, w, h) = [int(v) for v in box]
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        h = frame.shape[0]
+        w = frame.shape[1]
+        box = detection[0, 0, :, 3:7] * np.array([w, h, w, h])
+        box = box.astype(np.int32)
+        for i in range(len(box)):
+            p1 = (box[i][0], box[i][1])
+            p2 = (box[i][2], box[i][3])
+            cv2.rectangle(frame, p1, p2, (255,0,0), 2)
         return frame

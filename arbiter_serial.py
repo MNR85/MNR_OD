@@ -34,13 +34,14 @@ class Arbiter:
         self.detector.setRunMode(self.useGpu)
         self.detector.initNet()
         self.counter = 0
-        self.ratioAvg=0
-        self.tdAvg=0
-        self.ttAvg=0
-        self.td2 = 0
-        self.det=0
-        self.tra=0
-        self.itr=0
+        self.ratioAvg=0 # track/detect ratio
+        self.tdAvg=0 # detection time average
+        self.trAvg=0 # refresh track " "
+        self.ttAvg=0 # track " "
+        self.td2 = 0 # time detection 2
+        self.det=0 # total detection time
+        self.ref=0 # total refresh time
+        self.tra=0 # total track time
 
     def newImage(self, frame):
         if (self.counter%5==0):
@@ -51,13 +52,16 @@ class Arbiter:
             if(self.tdAvg==0):
                 self.tdAvg=self.td2
             self.tdAvg = (self.tdAvg+self.td2)/2
-            # print("detected: ",len(detections['detection_out'][0, 0, :, 1]))
-            # return frame
-            t1=time.time()
+            self.det = self.det + self.td2
+            tr1=time.time()
             self.cvTracker.refreshTrack(frame, detections['detection_out'])
-            self.itr = self.itr +time.time()- t1
-            self.det = self.det +time.time()- td1
-            print("Detect in: ",str(time.time()-td1))
+            tr2=time.time() - tr1
+            self.ref = self.ref+tr2
+            if (self.trAvg == 0):
+                self.trAvg = tr2
+            self.trAvg = (self.trAvg + tr2) / 2
+            print("Detect in: ",str(self.td2))
+            print("Refresh in: ",str(tr2))
         else:
             tt1=time.time()
             (success, boxes) = self.cvTracker.track(frame)
@@ -105,13 +109,13 @@ try:
             # print("newImage in: ",str(time.time()-t1))
             t2 = t2 + (time.time()-t1)
         counter = counter + 1
-    print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det)+", initT: "+str(arbiter.itr))
+    print("Execution: ",str(t2), ", tra: "+str(arbiter.tra)+", det: "+str(arbiter.det)+", refresh: "+str(arbiter.ref))
 except str:
     print("Exception")
 fps.stop()
 cap.release()
 # cv2.destroyAllWindows()
-print("Avg ratio: ",str(arbiter.ratioAvg),", Avg tt: ", str(arbiter.ttAvg),", Avg td: ", str(arbiter.tdAvg))
+print("Avg ratio: ",str(arbiter.ratioAvg),", Avg tt: ", str(arbiter.ttAvg),", Avg td: ", str(arbiter.tdAvg),", Avg ref: ", str(arbiter.trAvg))
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
