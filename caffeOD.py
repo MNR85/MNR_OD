@@ -2,7 +2,7 @@ from arbiter import Arbiter
 import cv2
 from imutils.video import FPS
 
-arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel', True, True, 'mosse') #'mosse')
+arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel', False, False, 'mosse') #'mosse')
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)
@@ -32,10 +32,11 @@ try:
             counter = counter + 1
         else:
             break
-        print ("******",str(counter))
+        # print ("******",str(counter))
 
 except:
     print("Exception")
+print("Finished stream")
 fps.stop()
 fps2.stop()
 arbiter.stop()

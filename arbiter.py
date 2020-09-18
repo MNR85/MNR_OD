@@ -26,13 +26,14 @@ class Arbiter:
         self.detectTime = 0
         self.refreshTime = 0
         self.boxTime = 0
-        # --------- counters
-        self.detectCount = 0
-        self.trackCount = 0
 
         # --------- process
         if(self.serialProcessing):
             print("serial mode")
+            # --------- counters
+            self.detectCount = 0
+            self.trackCount = 0
+
             self.counter=0
             self.detection=[]
             self.detector.setRunMode(self.useGpu)
@@ -50,17 +51,18 @@ class Arbiter:
             self.initCNN = Value('b', False)
             self.processingCNN = Value('b', False)
             self.CnnCounter = Value('i', 0)
+            self.RefreshCounter = Value('i', 0)
             self.TrackCounter = Value('i', 0)
             self.resultCounter = Value('i', 0)
             self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.detector, self.runThread, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
             self.detectorP.daemon = True  # background run
-            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter))
+            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter,self.RefreshCounter))
             self.trackerP.daemon = True  # background run
             self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.runThread,self.resultQ,self.resultCounter))# , args=[detector.runThread])
             self.getResultP.daemon = True  # background run
             self.detectorP.start()
             self.trackerP.start()
-            # self.getResultP.start()
+            self.getResultP.start()
             print('waiting for init net...')
             while not self.initCNN.value:
                 time.sleep(0.1)
@@ -78,15 +80,16 @@ class Arbiter:
             lastD=0
             lastR=0
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
-                if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
-                    haltDetect = haltDetect+1
-                lastT = self.trackerQ.qsize()
-                lastD = self.detectorInQ.qsize()
-                lastR = self.resultQ.qsize()
-                if(haltDetect>10):
-                    print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
-                    break
-                time.sleep(0.5)
+                print("DetectQ: ",str(self.detectorInQ.qsize())," Detect count: ",str(self.CnnCounter),"TrackQ: ",str(self.trackerQ.qsize())," Track count: ",str(self.TrackCounter),"Refresh Q: ",str(self.detectorOutQ.qsize())," Refresh count: ",str(self.RefreshCounter),"Result Q: ",str(self.resultQ.qsize()))
+                # if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
+                #     haltDetect = haltDetect+1
+                # lastT = self.trackerQ.qsize()
+                # lastD = self.detectorInQ.qsize()
+                # lastR = self.resultQ.qsize()
+                # if(haltDetect>10):
+                #     print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
+                #     break
+                time.sleep(1)
             self.runThread.value = False
             print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
                   ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
@@ -149,8 +152,6 @@ class Arbiter:
         detector.initNet()
         initCNN.value = True
         while (runThread.value):
-            print("zzz", str(runThread.value), str(detectorInQ.qsize()), str(self.trackerQ.qsize()),
-                  str(self.resultQ.qsize()))
             if (not detectorInQ.empty()):
                 if (detectorInQ.qsize() != 1):
                     raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
@@ -162,20 +163,26 @@ class Arbiter:
                 CnnCounter.value = CnnCounter.value + 1
         print("Done Detector")
 
-    def trackerThread(self,runThread, detectorOutQ, detectorImage, trackerQ, trackerQF, resultQ, TrackCounter):
+    def trackerThread(self,runThread, detectorOutQ, detectorImage, trackerQ, trackerQF, resultQ, TrackCounter, RefreshCounter):
         print("trackerThread id = ", os.getpid())
-        detection = [0, 0, 0, 0]
+        detection = []
         while (runThread.value == True):
-            print("aaaa", str(runThread.value), str(trackerQ.qsize()))
             if (not detectorOutQ.empty()):
+                if (detectorOutQ.qsize()>1):
+                    print("[Warning] Tracker can not keep up to detector: ",str(detectorOutQ.qsize()))
                 detection = detectorOutQ.get()
                 frame = detectorImage.get()
                 self.cvTracker.refreshTrack(frame, detection)
+                RefreshCounter.value=RefreshCounter.value+1
+            # if(trackerQ.qsize()>0):
+            #     print("Tracker q size: ",str(trackerQ.qsize()))
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
+                # print("After get Tracker q size: ", str(trackerQ.qsize()))
                 firstTime = trackerQF.get()
                 (success, boxes) = self.cvTracker.track(frame)
                 if (firstTime):
+                    print("new result: ",str(TrackCounter.value),", and qsize: ",str(resultQ.qsize()))
                     resultQ.put(self.draw(frame, boxes, detection))
                     TrackCounter.value = TrackCounter.value + 1
         print("Done tracker, ", str(trackerQ.qsize()),str(resultQ.qsize()))
@@ -183,15 +190,15 @@ class Arbiter:
     def getResultThread(self,runThread,resultQ,resultCounter):
         print("getResultThread id = ", os.getpid())
         fps = FPS().start()
-        counter = 0
         while (runThread.value):
-            # print("bbbb", str(runThread.value), str(resultQ.qsize()))
+            # if(resultQ.qsize()>0):
+            #     time.sleep(0.1)
+                # print("result Q: ",str(resultQ.qsize()))
             if (not resultQ.empty()):
                 fps.update()
-                counter = counter + 1
                 im = resultQ.get()
                 resultCounter.value = resultCounter.value + 1
-                # cv2.imwrite("out_images/"+str(counter)+".jpg", im)
+                # cv2.imwrite("out_images/"+str(resultCounter.value)+".jpg", im)
                 # cv2.imshow("tracker",im)
                 # cv2.waitKey(1)
         fps.stop()
@@ -203,12 +210,13 @@ class Arbiter:
         for box in boxes:
             (x, y, w, h) = [int(v) for v in box]
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        h = frame.shape[0]
-        w = frame.shape[1]
-        box = detection[0, 0, :, 3:7] * np.array([w, h, w, h])
-        box = box.astype(np.int32)
-        for i in range(len(box)):
-            p1 = (box[i][0], box[i][1])
-            p2 = (box[i][2], box[i][3])
-            cv2.rectangle(frame, p1, p2, (255,0,0), 2)
+        if(len(detection)!=0):
+            h = frame.shape[0]
+            w = frame.shape[1]
+            box = detection[0, 0, :, 3:7] * np.array([w, h, w, h])
+            box = box.astype(np.int32)
+            for i in range(len(box)):
+                p1 = (box[i][0], box[i][1])
+                p2 = (box[i][2], box[i][3])
+                cv2.rectangle(frame, p1, p2, (255,0,0), 2)
         return frame
