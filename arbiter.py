@@ -5,7 +5,7 @@ os.environ['GLOG_minloglevel'] = '2'
 # 2 - warnings
 # 3 - errors
 import cv2
-from multiprocessing import Process, Value, Queue
+from multiprocessing import Process, Value, Queue, Event
 from imutils.video import FPS
 import cvTracker
 import MNR_Net
@@ -41,6 +41,7 @@ class Arbiter:
             print("serial mode init fined")
         else:
             self.runThread = Value('b', True)
+            self.stopSignal = Event()
             self.imageQ = Queue(maxsize=0)
             self.detectorInQ = Queue(maxsize=0)
             self.detectorOutQ = Queue(maxsize=0)
@@ -54,15 +55,16 @@ class Arbiter:
             self.RefreshCounter = Value('i', 0)
             self.TrackCounter = Value('i', 0)
             self.resultCounter = Value('i', 0)
-            self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.detector, self.runThread, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
+            self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.stopSignal, self.detector, self.runThread, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
             self.detectorP.daemon = True  # background run
-            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter,self.RefreshCounter))
+            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.stopSignal, self.runThread, self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter,self.RefreshCounter))
             self.trackerP.daemon = True  # background run
-            self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.runThread,self.resultQ,self.resultCounter))# , args=[detector.runThread])
+            self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.stopSignal, self.runThread, self.resultQ,self.resultCounter))# , args=[detector.runThread])
             self.getResultP.daemon = True  # background run
             self.detectorP.start()
             self.trackerP.start()
             self.getResultP.start()
+            self.trackerCounterQ=0
             print('waiting for init net...')
             while not self.initCNN.value:
                 time.sleep(0.1)
@@ -75,38 +77,23 @@ class Arbiter:
             # print("Nothing to stop in serial mode")
         else:
             print("signal to stop. "),
-            haltDetect=0
-            lastT=0
-            lastD=0
-            lastR=0
+            # self.imageQ.close()
+            # self.trackerQ.close()
+            # self.trackerQF.close()
+            # self.detectorInQ.close()
+            # self.detectorImage.close()
+            self.stopSignal.set()
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
                 print("DetectQ: ",str(self.detectorInQ.qsize())," Detect count: ",str(self.CnnCounter),"TrackQ: ",str(self.trackerQ.qsize())," Track count: ",str(self.TrackCounter),"Refresh Q: ",str(self.detectorOutQ.qsize())," Refresh count: ",str(self.RefreshCounter),"Result Q: ",str(self.resultQ.qsize()))
-                # if((self.trackerQ.qsize()!=0 and self.trackerQ.qsize()== lastT)or (self.detectorInQ.qsize()!=0 and self.detectorInQ.qsize()== lastT)or (self.resultQ.qsize()!=0 and self.resultQ.qsize()== lastT)):
-                #     haltDetect = haltDetect+1
-                # lastT = self.trackerQ.qsize()
-                # lastD = self.detectorInQ.qsize()
-                # lastR = self.resultQ.qsize()
-                # if(haltDetect>10):
-                #     print("Halt detected: ",str(self.trackerQ.qsize()), str(self.detectorInQ.qsize(), str(self.resultQ.qsize())))
-                #     break
+                print("."),
                 time.sleep(1)
-            self.runThread.value = False
-            print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
-                  ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
-                  ", resultQ", str(self.resultQ.qsize()))
-            # print("terminate Ps, "),
-            # terminate processes before join
-            self.detectorP.terminate()
-            self.trackerP.terminate()
-            # self.getResultP.terminate()
-            # print("join Ps")
-            # join process
+
+            # self.runThread.value = False
+            # self.detectorP.terminate() # terminate will corrupt queue
+            # self.trackerP.terminate()
             self.detectorP.join()
             self.trackerP.join()
-            # self.getResultP.join()
-            print("detectorInQ: ", str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),
-                  ", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ", str(self.trackerQ.qsize()),
-                  ", resultQ", str(self.resultQ.qsize()))
+            self.getResultP.join()
             print("All process finished")
 
     def newImage(self, frame):
@@ -132,11 +119,14 @@ class Arbiter:
 
             self.counter= self.counter+1
         else:
-            # print("detectorInQ: ",str(self.detectorInQ.qsize()), ", detectorOutQ", str(self.detectorOutQ.qsize()),", detectorImage", str(self.detectorImage.qsize()), ", trackerQ: ",str(self.trackerQ.qsize()),", resultQ",str(self.resultQ.qsize()))
             if (not self.processingCNN.value):  # and self.counter%60==0):
+                print("still have track q: ",str(self.trackerQ.qsize()),", from: ",str(self.trackerCounterQ))
+                print("next queue is: ",str(self.imageQ.qsize()))
+                self.trackerCounterQ=0
                 while (not self.trackerQ.empty()):  # empty Q
-                    self.trackerQ.get()
-                    self.trackerQF.get()
+                    self.trackerQ.get(False,0.01)
+                while (not self.trackerQF.empty()):
+                    self.trackerQF.get(False,0.01)
                 while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
                     self.trackerQ.put(self.imageQ.get())
                     self.trackerQF.put(False)
@@ -145,16 +135,20 @@ class Arbiter:
             self.imageQ.put(frame)
             self.trackerQ.put(frame)
             self.trackerQF.put(True)
+            self.trackerCounterQ=self.trackerCounterQ+1
 
-    def detectorThread(self,detector, runThread, detectorInQ, detectorOutQ, processingCNN, initCNN, CnnCounter):
+    def detectorThread(self,stopSignal, detector, runThread, detectorInQ, detectorOutQ, processingCNN, initCNN, CnnCounter):
         print("detectorThread id = ", os.getpid())
         detector.setRunMode(self.useGpu)
         detector.initNet()
         initCNN.value = True
-        while (runThread.value):
+        while (not stopSignal.is_set() or not detectorInQ.empty()):#runThread.value):
+            if(stopSignal.is_set()):
+                print("Cleanup detectorInQ: ",detectorInQ.qsize())
             if (not detectorInQ.empty()):
                 if (detectorInQ.qsize() != 1):
-                    raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
+                    print("Fatal error, detectorInQ has more than 1 frame!!")
+                    # raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
                 processingCNN.value = True
                 frame = detectorInQ.get()
                 detections = detector.serialDetector(frame)
@@ -163,10 +157,14 @@ class Arbiter:
                 CnnCounter.value = CnnCounter.value + 1
         print("Done Detector")
 
-    def trackerThread(self,runThread, detectorOutQ, detectorImage, trackerQ, trackerQF, resultQ, TrackCounter, RefreshCounter):
+    def trackerThread(self,stopSignal, runThread, detectorOutQ, detectorImage, trackerQ, trackerQF, resultQ, TrackCounter, RefreshCounter):
         print("trackerThread id = ", os.getpid())
         detection = []
-        while (runThread.value == True):
+        fps=FPS().start()
+        while (not stopSignal.is_set() or not detectorOutQ.empty() or not trackerQ.empty()):#runThread.value == True):
+            print("sig: ",str(stopSignal.is_set())," ,dOQ: ",str(detectorOutQ.empty())," ,tQ: ",str(trackerQ.empty()))
+            if (stopSignal.is_set()):
+                print("Cleanup detectorOutQ: ", detectorOutQ.qsize(), ", trackerQ: ",trackerQ.qsize())
             if (not detectorOutQ.empty()):
                 if (detectorOutQ.qsize()>1):
                     print("[Warning] Tracker can not keep up to detector: ",str(detectorOutQ.qsize()))
@@ -174,31 +172,29 @@ class Arbiter:
                 frame = detectorImage.get()
                 self.cvTracker.refreshTrack(frame, detection)
                 RefreshCounter.value=RefreshCounter.value+1
-            # if(trackerQ.qsize()>0):
-            #     print("Tracker q size: ",str(trackerQ.qsize()))
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
-                # print("After get Tracker q size: ", str(trackerQ.qsize()))
                 firstTime = trackerQF.get()
                 (success, boxes) = self.cvTracker.track(frame)
                 if (firstTime):
-                    print("new result: ",str(TrackCounter.value),", and qsize: ",str(resultQ.qsize()))
+                    # print("In tracker: ",str(TrackCounter.value))
                     resultQ.put(self.draw(frame, boxes, detection))
                     TrackCounter.value = TrackCounter.value + 1
+                    fps.update()
         print("Done tracker, ", str(trackerQ.qsize()),str(resultQ.qsize()))
+        # print("Tracker frame:")
+        # print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
+        # print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
 
-    def getResultThread(self,runThread,resultQ,resultCounter):
+    def getResultThread(self,stopSignal, runThread,resultQ,resultCounter):
         print("getResultThread id = ", os.getpid())
         fps = FPS().start()
-        while (runThread.value):
-            # if(resultQ.qsize()>0):
-            #     time.sleep(0.1)
-                # print("result Q: ",str(resultQ.qsize()))
+        while (not stopSignal.is_set()):#runThread.value):
             if (not resultQ.empty()):
-                fps.update()
                 im = resultQ.get()
                 resultCounter.value = resultCounter.value + 1
-                # cv2.imwrite("out_images/"+str(resultCounter.value)+".jpg", im)
+                fps.update()
+                cv2.imwrite("out_images/"+str(resultCounter.value)+".jpg", im)
                 # cv2.imshow("tracker",im)
                 # cv2.waitKey(1)
         fps.stop()
