@@ -11,30 +11,30 @@ arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt
 cap = cv2.VideoCapture("test_images/soccer_01.mp4")
 fps = FPS().start()
 counter=0
-try:
-    while(cap.isOpened() and counter < 200):
-        ret, frame = cap.read()
-        if ret == True:
-            # if (not arbiter.resultQ.empty()):
-            #     fps2.update()
-            #     arbiter.resultQ.get()
-                # cv2.imshow("Result", arbiter.resultQ.get())
+# try:
+while(cap.isOpened() and counter < 200):
+    ret, frame = cap.read()
+    if ret == True:
+        # if (not arbiter.resultQ.empty()):
+        #     fps2.update()
+        #     arbiter.resultQ.get()
+            # cv2.imshow("Result", arbiter.resultQ.get())
 
-            fps.update()
-            # cv2.imshow("Raw", frame)
+        fps.update()
+        # cv2.imshow("Raw", frame)
 
-            # key = cv2.waitKey(1) & 0xFF
-            # # if the `q` key was pressed, break from the loop
-            # if key == ord("q"):
-            #     break
-            arbiter.newImage(frame)
-            counter = counter + 1
-        else:
-            break
-        # print ("******",str(counter))
+        # key = cv2.waitKey(1) & 0xFF
+        # # if the `q` key was pressed, break from the loop
+        # if key == ord("q"):
+        #     break
+        arbiter.newImage(frame)
+        counter = counter + 1
+    else:
+        break
+    # print ("******",str(counter))
 
-except Exception as e:
-    print("Exception: ",e)
+# except Exception as e:
+#     print("Exception: ",e)
 print("Finished stream")
 fps.stop()
 arbiter.stop()
