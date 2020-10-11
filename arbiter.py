@@ -43,13 +43,13 @@ class Arbiter:
             # self.runThread = Value('b', True)
             # self.stopSignal = Event()
             self.stopSignal="done"
-            self.imageQ = Queue(maxsize=0)
-            self.detectorInQ = Queue(maxsize=0)
-            self.detectorOutQ = Queue(maxsize=0)
-            self.detectorImage = Queue(maxsize=0)
-            self.trackerQ = Queue(maxsize=0)
-            self.trackerQF = Queue(maxsize=0)  # check if frame is first time or second time for processing
-            self.resultQ = Queue(maxsize=0)
+            self.imageQ = Queue(maxsize=0)  # main
+            self.detectorInQ = Queue(maxsize=0) # main -> detector
+            self.detectorOutQ = Queue(maxsize=0) # detector -> tracker
+            self.detectorImage = Queue(maxsize=0) # main -> tracker
+            self.trackerQ = Queue(maxsize=0) # main -> tracker
+            self.trackerQF = Queue(maxsize=0)  # main -> tracker # check if frame is first time or second time for processing
+            self.resultQ = Queue(maxsize=0) # tracker -> getresult
             self.initCNN = Value('b', False)
             self.processingCNN = Value('b', False)
             self.CnnCounter = Value('i', 0)
@@ -80,13 +80,13 @@ class Arbiter:
             print("signal to stop. "),
             self.detectorInQ.put(self.stopSignal)
             self.trackerQ.put(self.stopSignal)
-            counter=0
-            print("imageQ: ", str(self.imageQ.empty()), str(self.imageQ.qsize()))
-            while(not self.imageQ.qsize()>0):
+            # self.imageQ.close()
+            # self.detectorInQ.close()
+            # self.detectorImage.close()
+            # self.trackerQ.close()
+            # self.trackerQF.close()
+            while(self.imageQ.qsize()>0):
                 self.imageQ.get()
-                print("imageQ: ",str(self.imageQ.empty()), str(self.imageQ.qsize()))
-                counter=counter+1
-            print("imageQ: ", str(self.imageQ.empty()), str(self.imageQ.qsize()))
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
                 print("DetectQ: ",str(self.detectorInQ.qsize())," Detect count: ",str(self.CnnCounter),"TrackQ: ",str(self.trackerQ.qsize())," Track count: ",str(self.TrackCounter),"Refresh Q: ",str(self.detectorOutQ.qsize())," Refresh count: ",str(self.RefreshCounter),"Result Q: ",str(self.resultQ.qsize()))
                 print("."),
@@ -120,17 +120,17 @@ class Arbiter:
             self.counter= self.counter+1
         else:
             if (not self.processingCNN.value):  # and self.counter%60==0):
-                # print("still have track q: ",str(self.trackerQ.qsize()),", from: ",str(self.trackerCounterQ))
-                # print("next queue is: ",str(self.imageQ.qsize()))
                 self.trackerCounterQ=0
+                remainTrackQ=self.trackerQ.qsize()
                 while (not self.trackerQ.empty()):  # empty Q
-                    print("wait for getting tracker: ",str(self.trackerQ.qsize()))
+                    # print("wait for getting tracker: ",str(self.trackerQ.qsize()))
                     time.sleep(0.1)
                 print("Tracker empty")
                 while (not self.trackerQF.empty()):
-                    print("wait for getting trackerF: ", str(self.trackerQF.qsize()))
+                    # print("wait for getting trackerF: ", str(self.trackerQF.qsize()))
                     time.sleep(0.1)
-                print("TrackerF empty")
+                # print("TrackerF empty")
+                print("will add ",str(self.imageQ.qsize()),", remained from last: ",str(remainTrackQ))
                 while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
                     self.trackerQ.put(self.imageQ.get())
                     self.trackerQF.put(False)
