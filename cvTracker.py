@@ -26,7 +26,7 @@ class cvTracker():
 
 
     def refreshTrack(self, frame, detection):
-        t1 = time.time()
+        # t1 = time.time()
         h = frame.shape[0]
         w = frame.shape[1]
         cls = detection[0, 0, :, 1]
@@ -41,7 +41,7 @@ class cvTracker():
         self.trackers = cv2.MultiTracker_create()
         t2 = time.time()
         for i in range(len(cls)):
-            if(conf[i]>0.5):
+            if(conf[i]>0):
                 # print("%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i]))
                 # box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
                 # # print(box)

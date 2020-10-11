@@ -159,6 +159,8 @@ class Arbiter:
                     break
                 detections = detector.serialDetector(frame)
                 detectorOutQ.put(detections['detection_out'])
+                frame=self.draw(frame, [], detections['detection_out'])
+                cv2.imwrite("detect_images/" + str(CnnCounter.value) + ".jpg", frame)
                 processingCNN.value = False
                 CnnCounter.value = CnnCounter.value + 1
         detectorOutQ.put(self.stopSignal)
@@ -226,6 +228,13 @@ class Arbiter:
         for box in boxes:
             (x, y, w, h) = [int(v) for v in box]
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            sub_img = frame[y:y + h, x:x + w]
+            white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255
+
+            res = cv2.addWeighted(sub_img, 0.5, white_rect, 0.5, 1.0)
+
+            # Putting the image back to its position
+            frame[y:y + h, x:x + w] = res
         if(len(detection)!=0):
             h = frame.shape[0]
             w = frame.shape[1]
@@ -240,7 +249,7 @@ class Arbiter:
             for i in range(len(box)):
                 p1 = (box[i][0], box[i][1])
                 p2 = (box[i][2], box[i][3])
-                cv2.rectangle(frame, p1, p2, (255,0,0), 2)
+                cv2.rectangle(frame, p1, p2, (0,0,255), 2)
         return frame
 
 
