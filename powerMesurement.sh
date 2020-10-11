@@ -11,8 +11,8 @@ RAILS=("VDD_IN /sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power0_input"
 for ((i = 0; i < ${#RAILS[@]}; i++)); do
     read name[$i] node[$i] pwr_sum[$i] pwr_count[$i] <<<$(echo "${RAILS[$i]} 0 0")
 done
-echo "wait for init"
-while [ $isInited ]; do
+echo "wait for init $isInited $isRunning"
+while [ ! $isInited ]; do
   sleep 0.3
 done
 echo "init finished"
