@@ -14,7 +14,7 @@ os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
 fps = FPS().start()
 counter=0
 # try:
-while(cap.isOpened() and counter < 200):
+while(cap.isOpened() and counter < 1000):
     ret, frame = cap.read()
     if ret == True:
         # if (not arbiter.resultQ.empty()):

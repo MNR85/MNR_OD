@@ -95,6 +95,8 @@ class Arbiter:
             self.trackerP.join()
             self.getResultP.join()
             print("All process finished")
+            print("With pipeline")
+            print("Detect count: ", str(self.CnnCounter), ", track count/2: ", str(self.TrackCounter))
 
     def newImage(self, frame):
         if (self.serialProcessing):
