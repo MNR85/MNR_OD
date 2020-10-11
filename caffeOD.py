@@ -27,7 +27,7 @@ while(cap.isOpened() and counter < 200):
         # # if the `q` key was pressed, break from the loop
         # if key == ord("q"):
         #     break
-        arbiter.newImage(frame)
+        arbiter.newImage(cv2.resize(frame, (300, 300)) )
         counter = counter + 1
     else:
         break
