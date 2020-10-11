@@ -1,3 +1,4 @@
+import os
 from arbiter import Arbiter
 import cv2
 from imutils.video import FPS
@@ -9,6 +10,7 @@ arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt
 # cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 # cap = cv2.VideoCapture(1)
 cap = cv2.VideoCapture("test_images/soccer_01.mp4")
+os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
 fps = FPS().start()
 counter=0
 # try:
@@ -39,6 +41,7 @@ print("Finished stream")
 fps.stop()
 arbiter.stop()
 cap.release()
+os.system('tegrastats --stop')
 # cv2.destroyAllWindows()
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
