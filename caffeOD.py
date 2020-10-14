@@ -9,7 +9,7 @@ arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt
 #                'videoconvert ! appsink').format(1, 1920, 1080)
 # cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 # cap = cv2.VideoCapture(1)
-cap = cv2.VideoCapture("test_images/chair.mp4")
+cap = cv2.VideoCapture("test_images/los_angeles.mp4")
 os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
 fps = FPS().start()
 counter=0

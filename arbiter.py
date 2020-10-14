@@ -167,6 +167,7 @@ class Arbiter:
         detection = []
         detectionFrameNum = -1
         detectionTime= "x"
+        detectionCount=0
         fps=FPS().start()
         detectorDone=False
         trackerDone=False
@@ -185,6 +186,7 @@ class Arbiter:
                 detectionTime = time.time()
                 detectionFrameNum =detectionOut[1]
                 detection = detectionOut[0]
+                detectionCount = len(detection[0, 0, :, 1])
                 frame = detectorImage.get()
                 self.cvTracker.refreshTrack(frame, detection)
                 RefreshCounter.value=RefreshCounter.value+1
@@ -197,7 +199,7 @@ class Arbiter:
                 (success, boxes) = self.cvTracker.track(frame[0])
                 if (frame[1]):
                     # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
-                    resultQ.put([self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(), detectionFrameNum, detectionTime, len(detection)])
+                    resultQ.put([self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(), detectionFrameNum, detectionTime, detectionCount])
                     TrackCounter.value = TrackCounter.value + 1
                     fps.update()
         resultQ.put(self.stopSignal)
