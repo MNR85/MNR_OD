@@ -21,6 +21,14 @@ class Arbiter:
         self.detector = MNR_Net.Detector(prototxt, model)
         self.useGpu = useGpu
 
+        # --------- draw box
+        self.CLASSES = ('background',
+                   'aeroplane', 'bicycle', 'bird', 'boat',
+                   'bottle', 'bus', 'car', 'cat', 'chair',
+                   'cow', 'diningtable', 'dog', 'horse',
+                   'motorbike', 'person', 'pottedplant',
+                   'sheep', 'sofa', 'train', 'tvmonitor')
+
         # --------- times
         self.trackTime=0
         self.detectTime = 0
@@ -48,7 +56,6 @@ class Arbiter:
             self.detectorOutQ = Queue(maxsize=0) # detector -> tracker
             self.detectorImage = Queue(maxsize=0) # main -> tracker
             self.trackerQ = Queue(maxsize=0) # main -> tracker
-            self.trackerQF = Queue(maxsize=0)  # main -> tracker # check if frame is first time or second time for processing
             self.resultQ = Queue(maxsize=0) # tracker -> getresult
             self.initCNN = Value('b', False)
             self.processingCNN = Value('b', False)
@@ -58,7 +65,7 @@ class Arbiter:
             self.resultCounter = Value('i', 0)
             self.detectorP = Process(name='dnn', target=self.detectorThread, args=(self.detector, self.detectorInQ, self.detectorOutQ , self.processingCNN, self.initCNN, self.CnnCounter))
             self.detectorP.daemon = True  # background run
-            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.detectorOutQ, self.detectorImage, self.trackerQ, self.trackerQF, self.resultQ, self.TrackCounter,self.RefreshCounter))
+            self.trackerP = Process(name='track', target=self.trackerThread, args=(self.detectorOutQ, self.detectorImage, self.trackerQ, self.resultQ, self.TrackCounter,self.RefreshCounter))
             self.trackerP.daemon = True  # background run
             self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.resultQ,self.resultCounter))# , args=[detector.runThread])
             self.getResultP.daemon = True  # background run
@@ -80,11 +87,6 @@ class Arbiter:
             print("signal to stop. "),
             self.detectorInQ.put(self.stopSignal)
             self.trackerQ.put(self.stopSignal)
-            # self.imageQ.close()
-            # self.detectorInQ.close()
-            # self.detectorImage.close()
-            # self.trackerQ.close()
-            # self.trackerQF.close()
             while(self.imageQ.qsize()>0):
                 self.imageQ.get()
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
@@ -98,7 +100,7 @@ class Arbiter:
             print("With pipeline")
             print("Detect count: ", str(self.CnnCounter), ", track count/2: ", str(self.TrackCounter))
 
-    def newImage(self, frame):
+    def newImage(self, frame, counter):
         if (self.serialProcessing):
             if(self.counter%self.detectTrackRatio==0):
                 t1 = time.time()
@@ -128,19 +130,13 @@ class Arbiter:
                     # print("wait for getting tracker: ",str(self.trackerQ.qsize()))
                     time.sleep(0.1)
                 print("Tracker empty")
-                while (not self.trackerQF.empty()):
-                    # print("wait for getting trackerF: ", str(self.trackerQF.qsize()))
-                    time.sleep(0.1)
-                # print("TrackerF empty")
                 print("will add ",str(self.imageQ.qsize()),", remained from last: ",str(remainTrackQ))
                 while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
-                    self.trackerQ.put(self.imageQ.get())
-                    self.trackerQF.put(False)
-                self.detectorInQ.put(frame)
+                    self.trackerQ.put([self.imageQ.get(), False])
+                self.detectorInQ.put([frame, counter])
                 self.detectorImage.put(frame)
             self.imageQ.put(frame)
-            self.trackerQ.put(frame)
-            self.trackerQF.put(True)
+            self.trackerQ.put([frame, True ,counter, time.time()]) # frame, isFirstTime, frameCounter, frameInputTime
             self.trackerCounterQ=self.trackerCounterQ+1
 
     def detectorThread(self, detector, detectorInQ, detectorOutQ, processingCNN, initCNN, CnnCounter):
@@ -157,23 +153,26 @@ class Arbiter:
                 frame = detectorInQ.get()
                 if(frame==self.stopSignal):
                     break
-                detections = detector.serialDetector(frame)
-                detectorOutQ.put(detections['detection_out'])
-                frame=self.draw(frame, [], detections['detection_out'])
-                cv2.imwrite("detect_images/" + str(CnnCounter.value) + ".jpg", frame)
+                detections = detector.serialDetector(frame[0])
+                detectorOutQ.put([detections['detection_out'], frame[1]]) # detection out, frame num
+                # frame[0]=self.draw(frame[0], detections['detection_out'])
+                # cv2.imwrite("detect_images/" + str(CnnCounter.value) + ".jpg", frame[0])
                 processingCNN.value = False
                 CnnCounter.value = CnnCounter.value + 1
         detectorOutQ.put(self.stopSignal)
         print("Done Detector: ",str(detectorInQ.qsize()))
 
-    def trackerThread(self,detectorOutQ, detectorImage, trackerQ, trackerQF, resultQ, TrackCounter, RefreshCounter):
+    def trackerThread(self,detectorOutQ, detectorImage, trackerQ, resultQ, TrackCounter, RefreshCounter):
         print("trackerThread id = ", os.getpid())
         detection = []
+        detectionFrameNum = -1
+        detectionTime= "x"
         fps=FPS().start()
         detectorDone=False
         trackerDone=False
         while (True):
             if (detectorDone and trackerDone):
+                print("Break from tracker")
                 break
             if (not detectorOutQ.empty()):
                 if (detectorOutQ.qsize()>1):
@@ -183,7 +182,9 @@ class Arbiter:
                     print ("see detectorOut done")
                     detectorDone=True
                     continue
-                detection = detectionOut
+                detectionTime = time.time()
+                detectionFrameNum =detectionOut[1]
+                detection = detectionOut[0]
                 frame = detectorImage.get()
                 self.cvTracker.refreshTrack(frame, detection)
                 RefreshCounter.value=RefreshCounter.value+1
@@ -193,21 +194,26 @@ class Arbiter:
                     print ("See trackerQ done")
                     trackerDone=True
                     continue
-                firstTime = trackerQF.get()
-                (success, boxes) = self.cvTracker.track(frame)
-                if (firstTime):
-                    # print("In tracker: ",str(TrackCounter.value))
-                    resultQ.put(self.draw(frame, boxes, detection))
+                (success, boxes) = self.cvTracker.track(frame[0])
+                if (frame[1]):
+                    # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
+                    resultQ.put([self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(), detectionFrameNum, detectionTime, len(detection)])
                     TrackCounter.value = TrackCounter.value + 1
                     fps.update()
         resultQ.put(self.stopSignal)
-        print("Done tracker, ", str(trackerQ.qsize()),str(resultQ.qsize()))
         fps.stop()
+        print("Done tracker, ", str(trackerQ.qsize()),str(resultQ.qsize()))
         print("[INFO] Tracker elasped time: {:.2f}".format(fps.elapsed()))
         print("[INFO] Tracker approx. FPS: {:.2f}".format(fps.fps()))
 
     def getResultThread(self,resultQ,resultCounter):
         print("getResultThread id = ", os.getpid())
+        f = open("arbiter_result.csv", "w") #"a")
+        f.write("frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency\n")
+        startTime=-1
+        lastInputTime = -1
+        lastTrackOutTime = -1
+        lastDetectOutTime = -1
         fps = FPS().start()
         while (True):
             if (not resultQ.empty()):
@@ -216,20 +222,35 @@ class Arbiter:
                     break
                 resultCounter.value = resultCounter.value + 1
                 fps.update()
-                cv2.imwrite("out_images/"+str(resultCounter.value)+".jpg", im)
+                cv2.imwrite("out_images/"+str(resultCounter.value)+".jpg", im[0])
+                frameNum=im[1]
+                if(startTime==-1):
+                    startTime=im[2]
+                inputTime=im[2]-startTime
+                trackOutTime=im[3]-startTime
+                frameDetectNum=im[4]
+                if (im[5] == "x"):
+                    im[5] = im[2]
+                detectOutTime=im[5]-startTime
+                detectCount=im[6]
+                f.write(str(frameNum)+ ", "+ str(frameDetectNum)+ ", "+ str(detectCount)+", "+str(inputTime)+", "+str(inputTime-lastInputTime)+ ", "+str(trackOutTime)+ ", "+str(trackOutTime-lastTrackOutTime)+ ", "+str(detectOutTime)+ ", "+str(detectOutTime-lastDetectOutTime)+", "+str(trackOutTime-inputTime)+", "+str(trackOutTime-detectOutTime)+"\n")
+                lastInputTime=inputTime
+                lastTrackOutTime=trackOutTime
+                lastDetectOutTime=detectOutTime
                 # cv2.imshow("tracker",im)
                 # cv2.waitKey(1)
         print("Done Get result: ", str(resultQ.qsize()))
         fps.stop()
         print("[INFO] Get result elasped time: {:.2f}".format(fps.elapsed()))
         print("[INFO] Get result approx. FPS: {:.2f}".format(fps.fps()))
+        f.close()
 
-    def draw(self, frame, boxes, detection):
-        for box in boxes:
+    def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[]):
+        for box in trackBoxes:
             (x, y, w, h) = [int(v) for v in box]
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             sub_img = frame[y:y + h, x:x + w]
-            white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255
+            white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255 if validTrackBoxes else 128
 
             res = cv2.addWeighted(sub_img, 0.5, white_rect, 0.5, 1.0)
 
@@ -240,6 +261,8 @@ class Arbiter:
             w = frame.shape[1]
             # try:
             box = detection[0, 0, :, 3:7] * np.array([w, h, w, h])
+            cls = detection[0, 0, :, 1]
+            conf = detection[0, 0, :, 2]
             # except Exception  as e:
             #     print("error is ",e)
             #     print("detection: ",detection)
@@ -250,6 +273,10 @@ class Arbiter:
                 p1 = (box[i][0], box[i][1])
                 p2 = (box[i][2], box[i][3])
                 cv2.rectangle(frame, p1, p2, (0,0,255), 2)
+                p3 = (max(p1[0], 15), max(p1[1], 15))
+                title = "%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i])
+                cv2.rectangle(frame, (p3[0],p3[1]-20), (p3[0]+100, p3[1]), (0, 0, 0), -1)
+                cv2.putText(frame, title, p3, cv2.FONT_ITALIC, 0.6, (255, 255, 255), 1)
         return frame
 
 
