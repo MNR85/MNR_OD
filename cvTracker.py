@@ -4,7 +4,7 @@ import time
 
 class cvTracker():
 
-    def __init__(self, trackType):
+    def __init__(self, trackType, logger=None):
         self.OPENCV_OBJECT_TRACKERS = {
         "csrt": cv2.TrackerCSRT_create,
         "kcf": cv2.TrackerKCF_create,
@@ -22,6 +22,11 @@ class cvTracker():
                    'sheep', 'sofa', 'train', 'tvmonitor')
         self.trackType=trackType
         self.trackers = cv2.MultiTracker_create()
+
+        if(logger is None):
+            self.print=print
+        else:
+            self.print=logger.warning
         # self.totalT=0
 
 
@@ -34,7 +39,7 @@ class cvTracker():
         # box, conf, cls = (box.astype(np.int32), conf, cls)
         box = (detection[0, 0, :, 3:7] * np.array([w, h, w, h])).astype(np.int32)
         if(conf[0]<0):
-            print('bad detection, continue tracking')
+            self.print('bad detection, continue tracking')
             return
 
         # initialize OpenCV's special multi-object tracker

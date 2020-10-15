@@ -2,15 +2,33 @@ import os
 from arbiter import Arbiter
 import cv2
 from imutils.video import FPS
+from MNR_logger import MNR_logger
 
-arbiter = Arbiter('ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt','ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel', True, False, 'mosse') #'mosse')
+# ------------- Args
+videoName="test_images/los_angeles.mp4"
+useGPU=True
+serial=False
+trackType='csrt'
+protoFile='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt'
+caffeModel='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel'
+
+# -------------- Objs
+logger=MNR_logger("results")
+arbiter = Arbiter(protoFile, caffeModel, useGPU, serial, trackType,logger) #'mosse')
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)
 # cap = cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
 # cap = cv2.VideoCapture(1)
-cap = cv2.VideoCapture("test_images/los_angeles.mp4")
-os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
+
+
+# -------------- Starts
+
+cap = cv2.VideoCapture(videoName)
+logger.start()
+logger.info("Video is: "+videoName)
+logger.info("Options: userGPU: "+str(useGPU))
+
 fps = FPS().start()
 counter=0
 # try:
@@ -29,8 +47,8 @@ while(cap.isOpened() and counter < 1000):
 print("Finished stream")
 fps.stop()
 arbiter.stop()
+logger.stop()
 cap.release()
-os.system('tegrastats --stop')
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
