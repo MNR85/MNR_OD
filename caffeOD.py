@@ -13,8 +13,7 @@ protoFile='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt'
 caffeModel='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel'
 
 # -------------- Objs
-logger=MNR_logger("results")
-arbiter = Arbiter(protoFile, caffeModel, useGPU, serial, trackType,logger) #'mosse')
+arbiter = Arbiter(protoFile, caffeModel, useGPU, serial, trackType,MNR_logger("results")) #'mosse')
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)
@@ -25,9 +24,9 @@ arbiter = Arbiter(protoFile, caffeModel, useGPU, serial, trackType,logger) #'mos
 # -------------- Starts
 
 cap = cv2.VideoCapture(videoName)
-logger.start()
-logger.info("Video is: "+videoName)
-logger.info("Options: userGPU: "+str(useGPU))
+arbiter.logger.start()
+arbiter.logger.info("Video is: "+videoName)
+arbiter.logger.info("Options: userGPU: "+str(useGPU))
 
 fps = FPS().start()
 counter=0
@@ -47,7 +46,7 @@ while(cap.isOpened() and counter < 1000):
 print("Finished stream")
 fps.stop()
 arbiter.stop()
-logger.stop()
+arbiter.logger.stop()
 cap.release()
 print("Input frame:")
 print("[INFO] elasped time: {:.2f}".format(fps.elapsed()))
