@@ -123,7 +123,7 @@ class MNR_logger():
         memS= str(self.memStat())
 
         self.fuGPU.seek(0)
-        gpuS=str(int(self.fuGPU.readline()))
+        gpuS=str(int(self.fuGPU.readline())/10)
 
         # ----- temp
         self.ftCPUb.seek(0)
