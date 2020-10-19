@@ -16,6 +16,8 @@ class MNR_logger():
         self.enable=enable
         self.msgQ = Queue(maxsize=0)  # main
 
+
+
     def start(self):
         # if(not self.enable):
         #     return
@@ -28,10 +30,12 @@ class MNR_logger():
         # self.fInfo = open(self.childPath + "/info.log", "w")
         # self.fError = open(self.childPath + "/error.log", "w")
         self.fAll = open(self.childPath + "/all.log", "w")
-        self.fArbiterResults.write(
-            "frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency\n")
+        strCSV = "frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency"
+
         # os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
-        if(platform.node()=="tx2-desktop"):
+        self.platformNod=platform.node()
+        if (self.platformNod == "tx2-desktop"):
+            strCSV = strCSV + ", temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-SOC, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU"
             # Resource usage
             gpuUsageFile = "/sys/devices/gpu.0/load"
             cpuUsageFile = "/proc/stat"
@@ -43,33 +47,48 @@ class MNR_logger():
             mCpuTempFile = "/sys/devices/virtual/thermal/thermal_zone1/temp"
 
             # Resource power
-            VDD_INpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power0_input"
-            VDD_GPUpower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power0_input"
-            VDD_CPUpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power1_input"
-            VDD_SOCpower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power1_input"
-            VDD_DDRpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power2_input"
-            VDD_Wifipower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power2_input"
+            vdd_INpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power0_input"
+            vdd_GPUpower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power0_input"
+            vdd_CPUpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power1_input"
+            vdd_SOCpower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power1_input"
+            vdd_DDRpower = "/sys/bus/i2c/drivers/ina3221x/0-0041/iio:device1/in_power2_input"
+            vdd_Wifipower = "/sys/bus/i2c/drivers/ina3221x/0-0040/iio:device0/in_power2_input"
 
-            self.fCPU=open(cpuUsageFile, "r")
-            self.fMem = open(memUsageFile, "r")
-            self.cpuTotal= {}
-            self.cpuIdle= {}
+            self.fuCPU = open(cpuUsageFile, "r")  # file usage cpu
+            self.fuMem = open(memUsageFile, "r")
+            self.fuGPU = open(gpuUsageFile, "r")
 
-        else: # General computers
+            self.ftCPUb = open(bCpuTempFile, "r")  # file temperature cpu b
+            self.ftCPUm = open(mCpuTempFile, "r")
+            self.ftGPU = open(gpuTempFile, "r")
+
+            self.fpTotal = open(vdd_INpower)  # file power total
+            self.fpGPU = open(vdd_GPUpower)
+            self.fpCPU = open(vdd_CPUpower)
+            self.fpSOC = open(vdd_SOCpower)
+            self.fpDDR = open(vdd_DDRpower)
+            self.fpWifi = open(vdd_Wifipower)
+        else:  # General computers
+            strCSV = strCSV + ", usage-Mem, usage-CPU"
             cpuUsageFile = "/proc/stat"
             memUsageFile = "/proc/meminfo"
-            self.fCPU = open(cpuUsageFile, "r")
-            self.fMem = open(memUsageFile, "r")
-            self.cpuTotal = {}
-            self.cpuIdle = {}
+            self.fuCPU = open(cpuUsageFile, "r")
+            self.fuMem = open(memUsageFile, "r")
+        self.fArbiterResults.write(strCSV + "\n")
+        # need for store previous state
+        self.cpuTotal = {}
+        self.cpuIdle = {}
+        self.lastPlatformStat = ""
+        self.lastPlatformStatUpdate=time.time()-1
+        self.cpuStat()
 
 
     def cpuStat(self):
-        self.fCPU.seek(0)
+        self.fuCPU.seek(0)
         cpuTotal = {}
         cpuIdle = {}
         cpuPercentage = {}
-        for line in self.fCPU:
+        for line in self.fuCPU:
             if (not line.startswith("cpu")):
                 break
             stat = line.split()  # split by space
@@ -84,20 +103,61 @@ class MNR_logger():
             self.cpuTotal[stat[0]] = cpuTotal[stat[0]]
             self.cpuIdle[stat[0]] = cpuIdle[stat[0]]
         return cpuPercentage
+
     def memStat(self):
-        self.fMem.seek(0)
-        memTotal=int(self.fMem.readline().split()[1])
-        self.fMem.readline() # MemFree is not required
-        memAvail=int(self.fMem.readline().split()[1])
+        self.fuMem.seek(0)
+        memTotal=int(self.fuMem.readline().split()[1])
+        self.fuMem.readline() # MemFree is not required
+        memAvail=int(self.fuMem.readline().split()[1])
         return ((memTotal-memAvail)/memTotal)*100
 
+    def platformstat(self):
+        # ---- usage
+        cpuS = str(self.cpuStat())
+        memS = str(self.memStat())
+        return (", "+memS + ", " + cpuS)
+
     def tegrastat(self):
-        return self.cpuStat()
+        # ---- usage
+        cpuS= str(self.cpuStat())
+        memS= str(self.memStat())
 
+        self.fuGPU.seek(0)
+        gpuS=str(self.fuGPU.read())
 
-        # fin.read()  # read first time
-        # fin.seek(0)  # offset of 0
-        # fin.read()  # read again
+        # ----- temp
+        self.ftCPUb.seek(0)
+        bcpuT=str(int(self.ftCPUb.read())/1000)
+
+        self.ftCPUm.seek(0)
+        mcpuT=str(int(self.ftCPUm.read())/1000)
+
+        self.ftGPU.seek(0)
+        gpuT=str(int(self.ftGPU.read())/1000)
+
+        # ----- power
+        self.fpTotal.seek(0)
+        totalP=str(self.fpTotal.read())
+
+        self.fpGPU.seek(0)
+        gpuP=str(self.fpGPU.read())
+
+        self.fpCPU.seek(0)
+        cpuP=str(self.fpCPU.read())
+
+        self.fpSOC.seek(0)
+        socP=str(self.fpSOC.read())
+
+        self.fpDDR.seek(0)
+        ddrP=str(self.fpDDR.read())
+
+        self.fpWifi.seek(0)
+        wifiP=str(self.fpWifi.read())
+
+        ##
+        # order is
+        # , temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU
+        return (", "+gpuT+", "+bcpuT+", "+mcpuT+", "+totalP+", "+gpuP+", "+cpuP+", "+socP+", "+ddrP+", "+wifiP+", "+", "+gpuS+", "+memS+", "+cpuS)
 
     def imwrite(self, fileName, frame, isTrack=True):
         if(isTrack):
@@ -144,7 +204,15 @@ class MNR_logger():
     def csv(self, newLine):
         # if (not self.enable):
         #     return
-        self.fArbiterResults.write(newLine)
+        nowT=time.time()
+        if(nowT-self.lastPlatformStatUpdate>1):
+            self.lastPlatformStatUpdate=nowT
+            if (self.platformNod == "tx2-desktop"):
+                self.lastPlatformStat=self.tegrastat()
+            else:
+                self.lastPlatformStat=self.platformstat()
+        self.fArbiterResults.write(newLine +self.lastPlatformStat+"\n")
+        self.fArbiterResults.flush()
 
     def stop(self):
         os.system('tegrastats --stop')
@@ -159,12 +227,3 @@ class MNR_logger():
         # self.fInfo.close()
         # self.fError.close()
         self.fAll.close()
-
-logger=MNR_logger()
-logger.start()
-counter=0
-while(counter<100):
-    print(logger.tegrastat())
-    print(logger.memStat())
-    time.sleep(1)
-    counter=counter+1

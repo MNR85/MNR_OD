@@ -76,12 +76,13 @@ class Arbiter:
             self.getResultP = Process(name='getR', target=self.getResultThread, args=(self.resultQ,self.resultCounter))# , args=[detector.runThread])
             self.getResultP.daemon = True  # background run
             self.detectorP.start()
-            self.trackerP.start()
-            self.getResultP.start()
-            self.trackerCounterQ=0
             print('waiting for init net...')
             while not self.initCNN.value:
                 time.sleep(0.1)
+            self.logger.start()
+            self.trackerP.start()
+            self.getResultP.start()
+            self.trackerCounterQ=0
             print('Ready')
 
     def stop(self):
@@ -242,7 +243,7 @@ class Arbiter:
                     im[5] = im[2]
                 detectOutTime=im[5]-startTime
                 detectCount=im[6]
-                self.logger.csv(str(frameNum)+ ", "+ str(frameDetectNum)+ ", "+ str(detectCount)+", "+str(inputTime)+", "+str(inputTime-lastInputTime)+ ", "+str(trackOutTime)+ ", "+str(trackOutTime-lastTrackOutTime)+ ", "+str(detectOutTime)+ ", "+str(detectOutTime-lastDetectOutTime)+", "+str(trackOutTime-inputTime)+", "+str(trackOutTime-detectOutTime)+"\n")
+                self.logger.csv(str(frameNum)+ ", "+ str(frameDetectNum)+ ", "+ str(detectCount)+", "+str(inputTime)+", "+str(inputTime-lastInputTime)+ ", "+str(trackOutTime)+ ", "+str(trackOutTime-lastTrackOutTime)+ ", "+str(detectOutTime)+ ", "+str(detectOutTime-lastDetectOutTime)+", "+str(trackOutTime-inputTime)+", "+str(trackOutTime-detectOutTime))
                 lastInputTime=inputTime
                 lastTrackOutTime=trackOutTime
                 lastDetectOutTime=detectOutTime
