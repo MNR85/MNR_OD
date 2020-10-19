@@ -214,6 +214,10 @@ class MNR_logger():
         self.fArbiterResults.write(newLine +self.lastPlatformStat+"\n")
         # self.fArbiterResults.flush()
 
+    def flush(self):
+        self.fAll.flush()
+        self.fArbiterResults.flush()
+
     def stop(self):
         os.system('tegrastats --stop')
         msgQSize=sys.getsizeof(self.msgQ)
