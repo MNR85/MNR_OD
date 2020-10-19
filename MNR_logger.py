@@ -123,7 +123,7 @@ class MNR_logger():
         memS= str(self.memStat())
 
         self.fuGPU.seek(0)
-        gpuS=str(self.fuGPU.readline())
+        gpuS=str(int(self.fuGPU.readline()))
 
         # ----- temp
         self.ftCPUb.seek(0)
@@ -137,27 +137,27 @@ class MNR_logger():
 
         # ----- power
         self.fpTotal.seek(0)
-        totalP=str(self.fpTotal.readline())
+        totalP=str(int(self.fpTotal.readline()))
 
         self.fpGPU.seek(0)
-        gpuP=str(self.fpGPU.readline())
+        gpuP=str(int(self.fpGPU.readline()))
 
         self.fpCPU.seek(0)
-        cpuP=str(self.fpCPU.readline())
+        cpuP=str(int(self.fpCPU.readline()))
 
         self.fpSOC.seek(0)
-        socP=str(self.fpSOC.readline())
+        socP=str(int(self.fpSOC.readline()))
 
         self.fpDDR.seek(0)
-        ddrP=str(self.fpDDR.readline())
+        ddrP=str(int(self.fpDDR.readline()))
 
         self.fpWifi.seek(0)
-        wifiP=str(self.fpWifi.readline())
+        wifiP=str(int(self.fpWifi.readline()))
 
         ##
         # order is
         # , temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU
-        return (", "+gpuT+", "+bcpuT+", "+mcpuT+", "+totalP+", "+gpuP+", "+cpuP+", "+socP+", "+ddrP+", "+wifiP+", "+", "+gpuS+", "+memS+", "+cpuS)
+        return (", "+gpuT+", "+bcpuT+", "+mcpuT+", "+totalP+", "+gpuP+", "+cpuP+", "+socP+", "+ddrP+", "+wifiP+", "+gpuS+", "+memS+", "+cpuS)
 
     def imwrite(self, fileName, frame, isTrack=True):
         if(isTrack):
