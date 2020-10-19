@@ -212,7 +212,7 @@ class MNR_logger():
             else:
                 self.lastPlatformStat=self.platformstat()
         self.fArbiterResults.write(newLine +self.lastPlatformStat+"\n")
-        self.fArbiterResults.flush()
+        # self.fArbiterResults.flush()
 
     def stop(self):
         os.system('tegrastats --stop')
