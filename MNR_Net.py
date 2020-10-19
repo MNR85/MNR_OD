@@ -5,8 +5,8 @@ import cv2  # For transform image
 import numpy as np  # For postProcessing
 from os import system  # For clearing console
 import os
-import sys
-sys.path.append("/home/mnr/softwares/caffe-ssd/python/")
+# import sys
+# sys.path.append("/home/mnr/softwares/caffe-ssd/python/")
 import caffe
 
 class ObjectDetect:
