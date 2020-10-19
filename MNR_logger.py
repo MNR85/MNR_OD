@@ -123,36 +123,36 @@ class MNR_logger():
         memS= str(self.memStat())
 
         self.fuGPU.seek(0)
-        gpuS=str(self.fuGPU.read())
+        gpuS=str(self.fuGPU.readline())
 
         # ----- temp
         self.ftCPUb.seek(0)
-        bcpuT=str(int(self.ftCPUb.read())/1000)
+        bcpuT=str(int(self.ftCPUb.readline())/1000)
 
         self.ftCPUm.seek(0)
-        mcpuT=str(int(self.ftCPUm.read())/1000)
+        mcpuT=str(int(self.ftCPUm.readline())/1000)
 
         self.ftGPU.seek(0)
-        gpuT=str(int(self.ftGPU.read())/1000)
+        gpuT=str(int(self.ftGPU.readline())/1000)
 
         # ----- power
         self.fpTotal.seek(0)
-        totalP=str(self.fpTotal.read())
+        totalP=str(self.fpTotal.readline())
 
         self.fpGPU.seek(0)
-        gpuP=str(self.fpGPU.read())
+        gpuP=str(self.fpGPU.readline())
 
         self.fpCPU.seek(0)
-        cpuP=str(self.fpCPU.read())
+        cpuP=str(self.fpCPU.readline())
 
         self.fpSOC.seek(0)
-        socP=str(self.fpSOC.read())
+        socP=str(self.fpSOC.readline())
 
         self.fpDDR.seek(0)
-        ddrP=str(self.fpDDR.read())
+        ddrP=str(self.fpDDR.readline())
 
         self.fpWifi.seek(0)
-        wifiP=str(self.fpWifi.read())
+        wifiP=str(self.fpWifi.readline())
 
         ##
         # order is
