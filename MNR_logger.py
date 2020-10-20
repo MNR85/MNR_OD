@@ -14,25 +14,22 @@ class MNR_logger():
         self.trackPath=self.childPath+"/trackOut"
         self.detectPath = self.childPath + "/DetectOut"
         self.enable=enable
-        self.msgQ = Queue(maxsize=0)  # main
+        self.msgQ = Queue(maxsize=0)
+        self.startTime=0
 
 
 
-    def start(self):
-        # if(not self.enable):
-        #     return
+    def start(self, startTime=0):
+        self.startTime=startTime
         if not os.path.exists(self.rootPath):
             os.makedirs(self.rootPath)
         os.makedirs(self.childPath)
         os.makedirs(self.trackPath)
         os.makedirs(self.detectPath)
         self.fArbiterResults = open(self.childPath + "/arbiter_result.csv", "w")
-        # self.fInfo = open(self.childPath + "/info.log", "w")
-        # self.fError = open(self.childPath + "/error.log", "w")
         self.fAll = open(self.childPath + "/all.log", "w")
         strCSV = "frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency"
 
-        # os.system('tegrastats --interval 1000 --logfile tegrastats.out &')
         self.platformNod=platform.node()
         if (self.platformNod == "tx2-desktop"):
             strCSV = strCSV + ", temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-SOC, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU"
@@ -95,8 +92,6 @@ class MNR_logger():
             cpuTotal[stat[0]] = sum([int(i) for i in stat[1:]])
             cpuIdle[stat[0]] = sum([int(i) for i in stat[4:6]])
             if stat[0] in self.cpuTotal:
-                totalD = cpuTotal[stat[0]] - self.cpuTotal[stat[0]]
-                idleD = cpuIdle[stat[0]] - self.cpuIdle[stat[0]]
                 cpuPercentage[stat[0]] = (((cpuTotal[stat[0]] - self.cpuTotal[stat[0]]) - (
                             cpuIdle[stat[0]] - self.cpuIdle[stat[0]])) / (
                                                       cpuTotal[stat[0]] - self.cpuTotal[stat[0]])) * 100.0
@@ -166,44 +161,27 @@ class MNR_logger():
             cv2.imwrite(self.detectPath + "/" + fileName, frame)
 
     def info(self, msg, toSTDout=False, toFile=True):
-        # if (not self.enable):
-        #     return
-        data="[Info] from ["+current_process().name+"] \t\t"+msg+" at "+str(time.time())
+        data= '{:30s}\t\t'.format("[Info] from ["+current_process().name+"]")+msg+" at "+str(time.time()-self.startTime)
         if(toSTDout):
             print(data)
         if(toFile):
             self.msgQ.put(data)
-            # logging.info(data)
-            # self.fInfo.write(data+"\n")
-            # self.fAll.write(data + "\n")
 
     def warning(self, msg, toSTDout=False, toFile=True):
-        # if (not self.enable):
-        #     return
-        data="[Warn] from ["+current_process().name+"]  \t\t"+msg+" at "+str(time.time())
+        data='{:30s}\t\t'.format("[Warn] from ["+current_process().name+"]")+msg+" at "+str(time.time()-self.startTime)
         if(toSTDout):
             print(data)
         if(toFile):
             self.msgQ.put(data)
-            # logging.warning(data)
-            # self.fError.write(data+"\n")
-            # self.fAll.write(data + "\n")
 
     def error(self, msg, toSTDout=False, toFile=True):
-        # if (not self.enable):
-        #     return
-        data="[Err] from ["+current_process().name+"]  \t\t"+msg+" at "+str(time.time())
+        data='{:30s}\t\t'.format("[Err] from ["+current_process().name+"]")+msg+" at "+str(time.time()-self.startTime)
         if(toSTDout):
             print(data)
         if(toFile):
             self.msgQ.put(data)
-            # logging.error(data)
-            # self.fError.write(data+"\n")
-            # self.fAll.write(data + "\n")
 
     def csv(self, newLine):
-        # if (not self.enable):
-        #     return
         nowT=time.time()
         if(nowT-self.lastPlatformStatUpdate>1):
             self.lastPlatformStatUpdate=nowT
@@ -219,7 +197,6 @@ class MNR_logger():
         self.fArbiterResults.flush()
 
     def stop(self):
-        os.system('tegrastats --stop')
         msgQSize=sys.getsizeof(self.msgQ)
         while(not self.msgQ.empty()):
             data=self.msgQ.get()
@@ -228,6 +205,4 @@ class MNR_logger():
         print("Size of msgQ was: ",str(msgQSize))
         self.fAll.write("Size of msgQ was: "+str(msgQSize))
         self.fArbiterResults.close()
-        # self.fInfo.close()
-        # self.fError.close()
         self.fAll.close()

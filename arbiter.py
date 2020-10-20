@@ -79,7 +79,8 @@ class Arbiter:
             print('waiting for init net...')
             while not self.initCNN.value:
                 time.sleep(0.1)
-            self.logger.start()
+            self.startTime=time.time()
+            self.logger.start(self.startTime)
             self.trackerP.start()
             self.getResultP.start()
             self.trackerCounterQ=0
@@ -188,7 +189,7 @@ class Arbiter:
                 break
             if (not detectorOutQ.empty()):
                 if (detectorOutQ.qsize()>1):
-                    self.logger.warning("[Warning] Tracker can not keep up to detector: "+str(detectorOutQ.qsize()))
+                    self.logger.error("Tracker can not keep up to detector: "+str(detectorOutQ.qsize()))
                 detectionOut = detectorOutQ.get()
                 if (detectionOut == self.stopSignal):
                     self.logger.info ("see detectorOut done")
@@ -197,9 +198,9 @@ class Arbiter:
                 detectionTime = time.time()
                 detectionFrameNum =detectionOut[1]
                 detection = detectionOut[0]
-                detectionCount = len(detection[0, 0, :, 1])
+                detectionCount = len(detection[0, 0, :, 1]) if detection[0, 0, :, 1][0]!=-1 else 0
                 frame = detectorImage.get()
-                self.cvTracker.refreshTrack(frame, detection)
+                not self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
                 RefreshCounter.value=RefreshCounter.value+1
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
@@ -221,7 +222,6 @@ class Arbiter:
 
     def getResultThread(self,resultQ,resultCounter):
         self.logger.info("getResultThread id = "+ str(os.getpid()))
-        startTime=-1
         lastInputTime = -1
         lastTrackOutTime = -1
         lastDetectOutTime = -1
@@ -235,14 +235,12 @@ class Arbiter:
                 fps.update()
                 self.logger.imwrite(format(resultCounter.value, '05d')+".jpg", im[0])
                 frameNum=im[1]
-                if(startTime==-1):
-                    startTime=im[2]
-                inputTime=im[2]-startTime
-                trackOutTime=im[3]-startTime
+                inputTime=im[2]-self.startTime
+                trackOutTime=im[3]-self.startTime
                 frameDetectNum=im[4]
                 if (im[5] == "x"):
                     im[5] = im[2]
-                detectOutTime=im[5]-startTime
+                detectOutTime=im[5]-self.startTime
                 detectCount=im[6]
                 self.logger.csv(str(frameNum)+ ", "+ str(frameDetectNum)+ ", "+ str(detectCount)+", "+str(inputTime)+", "+str(inputTime-lastInputTime)+ ", "+str(trackOutTime)+ ", "+str(trackOutTime-lastTrackOutTime)+ ", "+str(detectOutTime)+ ", "+str(detectOutTime-lastDetectOutTime)+", "+str(trackOutTime-inputTime)+", "+str(trackOutTime-detectOutTime))
                 lastInputTime=inputTime
@@ -252,8 +250,8 @@ class Arbiter:
                 # cv2.waitKey(1)
         self.logger.info("Done Get result: "+ str(resultQ.qsize()))
         fps.stop()
-        self.logger.info("[INFO] Get result elasped time: {:.2f}".format(fps.elapsed()))
-        self.logger.info("[INFO] Get result approx. FPS: {:.2f}".format(fps.fps()))
+        self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()))
+        self.logger.info("Get result: approx. FPS: {:.2f}".format(fps.fps()))
 
     def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[]):
         for box in trackBoxes:

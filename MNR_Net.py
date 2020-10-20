@@ -46,11 +46,6 @@ class Detector:
         self.input_geometry_ = [300, 300]  # self.net.params[0][0].data.shape
         self.lastDetections = []
         self.trackDict = {}
-        os.system('clear')
-        # print('[INFO] Reading from: '+protxt+' and '+caffeModel)
-        # print('[INFO] Using GPU mode: '+str(useGPU))
-        # print('[INFO] Using caffe transform: '+str(useCaffe))
-        # print('[INFO] Transform size: H'+str(self.nh)+' W'+str(self.nw))
 
     def setRunMode(self, useGPU1):
         self.useGPU = useGPU1
