@@ -193,6 +193,13 @@ class MNR_logger():
         # self.fArbiterResults.flush()
 
     def flush(self):
+        msgQSize = sys.getsizeof(self.msgQ)
+        while (not self.msgQ.empty()):
+            data = self.msgQ.get()
+            msgQSize = msgQSize + sys.getsizeof(data)
+            self.fAll.write(data + "\n")
+        print("Size of msgQ was: ", str(msgQSize))
+        self.fAll.write("Size of msgQ was: " + str(msgQSize))
         self.fAll.flush()
         self.fArbiterResults.flush()
 

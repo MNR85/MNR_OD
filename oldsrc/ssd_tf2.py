@@ -72,7 +72,7 @@ infer = detect_fn.signatures["serving_default"]
 print(infer.structured_outputs)
 print("infer size: ", sys.getsizeof(infer))
 gc.collect()
-im = cv2.imread("test_images/image1.jpg")
+im = cv2.imread("../test_images/image1.jpg")
 im = cv2.resize(im,(300,300))
 ##cv2_imshow(im)
 input_tensor = np.expand_dims(im, axis=0)

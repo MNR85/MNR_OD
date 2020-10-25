@@ -7,11 +7,11 @@ class cvTracker():
     def __init__(self, trackType, logger=None):
         self.OPENCV_OBJECT_TRACKERS = {
         "csrt": cv2.TrackerCSRT_create,
-        "kcf": cv2.TrackerKCF_create,
+        "kcf": cv2.TrackerKCF_create, # kcf > mil > boosting
         "boosting": cv2.TrackerBoosting_create,
         "mil": cv2.TrackerMIL_create,
         "tld": cv2.TrackerTLD_create,
-        "medianflow": cv2.TrackerMedianFlow_create,
+        "medianflow": cv2.TrackerMedianFlow_create, # weak in fast moving
         "mosse": cv2.TrackerMOSSE_create
         }
         self.CLASSES = ('background',
@@ -50,7 +50,7 @@ class cvTracker():
                 # print("%s:%.2f" % (self.CLASSES[int(cls[i])], conf[i]))
                 # box = detection[0, 0, i, 3:7] * np.array([w, h, w, h])
                 # # print(box)
-                # # tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
+                tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
                 # bbox= box[i]
                 # (sX,sY,w,h)=(box[i][0],box[i][1],box[i][2]-box[i][0],box[i][3]-box[i][1])
                 # bbox1=(sX, sY, w, h)
@@ -65,7 +65,7 @@ class cvTracker():
                     endY=h-1
                 bbox = (startX, startY, endX - startX, endY - startY)
                 # print(box)
-                self.trackers.add(cv2.TrackerMOSSE_create(), frame, bbox) #box)
+                self.trackers.add(tracker, frame, bbox) #box)
         # print()
         # t3 = time.time()
         # self.totalT = self.totalT + t3-t2

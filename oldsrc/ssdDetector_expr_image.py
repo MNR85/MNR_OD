@@ -77,7 +77,7 @@ if __name__ == '__main__':
         while not detector.netIsInit:
             a=0
     time.sleep(2)
-    im = cv2.imread("test_images/image1.jpg")
+    im = cv2.imread("../test_images/image1.jpg")
     t1 = time.time()
     getBoxedImage(im, detector.serialDetector(im))
     t2 = time.time()

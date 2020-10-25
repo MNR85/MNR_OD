@@ -96,6 +96,7 @@ class Arbiter:
             self.trackerQ.put(self.stopSignal)
             while(self.imageQ.qsize()>0):
                 self.imageQ.get()
+            self.logger.flush()
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
                 self.logger.info("DetectQ: "+str(self.detectorInQ.qsize())+"TrackQ: "+str(self.trackerQ.qsize())+"Refresh Q: "+str(self.detectorOutQ.qsize())+"Result Q: "+str(self.resultQ.qsize()))
                 self.logger.flush()
@@ -173,7 +174,7 @@ class Arbiter:
                 processingCNN.value = False
                 CnnCounter.value = CnnCounter.value + 1
         detectorOutQ.put(self.stopSignal)
-        self.logger.info("Done Detector: "+str(detectorInQ.qsize()))
+        self.logger.info("Done Detector: "+str(detectorInQ.qsize()), True)
 
     def trackerThread(self,detectorOutQ, detectorImage, trackerQ, resultQ, TrackCounter, RefreshCounter):
         self.logger.info("trackerThread id = "+ str(os.getpid()))
@@ -192,7 +193,7 @@ class Arbiter:
                     self.logger.error("Tracker can not keep up to detector: "+str(detectorOutQ.qsize()))
                 detectionOut = detectorOutQ.get()
                 if (detectionOut == self.stopSignal):
-                    self.logger.info ("see detectorOut done")
+                    self.logger.info ("see detectorOut done", True)
                     detectorDone=True
                     continue
                 detectionTime = time.time()
@@ -205,7 +206,7 @@ class Arbiter:
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
                 if (frame == self.stopSignal):
-                    self.logger.info ("See trackerQ done")
+                    self.logger.info ("See trackerQ done", True)
                     trackerDone=True
                     continue
                 (success, boxes) = self.cvTracker.track(frame[0])
@@ -216,9 +217,9 @@ class Arbiter:
                     fps.update()
         resultQ.put(self.stopSignal)
         fps.stop()
-        self.logger.info("Done tracker, "+ str(trackerQ.qsize())+" "+str(resultQ.qsize()))
-        self.logger.info("Tracker elasped time: {:.2f}".format(fps.elapsed()))
-        self.logger.info("Tracker approx. FPS: {:.2f}".format(fps.fps()))
+        self.logger.info("Done tracker, "+ str(trackerQ.qsize())+" "+str(resultQ.qsize()), True)
+        self.logger.info("Tracker elasped time: {:.2f}".format(fps.elapsed()), True)
+        self.logger.info("Tracker approx. FPS: {:.2f}".format(fps.fps()), True)
 
     def getResultThread(self,resultQ,resultCounter):
         self.logger.info("getResultThread id = "+ str(os.getpid()))
@@ -248,10 +249,10 @@ class Arbiter:
                 lastDetectOutTime=detectOutTime
                 # cv2.imshow("tracker",im)
                 # cv2.waitKey(1)
-        self.logger.info("Done Get result: "+ str(resultQ.qsize()))
+        self.logger.info("Done Get result: "+ str(resultQ.qsize()), True)
         fps.stop()
-        self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()))
-        self.logger.info("Get result: approx. FPS: {:.2f}".format(fps.fps()))
+        self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()), True)
+        self.logger.info("Get result: approx. FPS: {:.2f}".format(fps.fps()), True)
 
     def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[]):
         for box in trackBoxes:
