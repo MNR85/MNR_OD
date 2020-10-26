@@ -98,7 +98,7 @@ class Arbiter:
                 self.imageQ.get()
             self.logger.flush()
             while self.trackerQ.qsize()>0 or self.detectorInQ.qsize()>0 or self.resultQ.qsize()>0:
-                self.logger.info("DetectQ: "+str(self.detectorInQ.qsize())+"TrackQ: "+str(self.trackerQ.qsize())+"Refresh Q: "+str(self.detectorOutQ.qsize())+"Result Q: "+str(self.resultQ.qsize()))
+                self.logger.info("DetectQ: "+str(self.detectorInQ.qsize())+", TrackQ: "+str(self.trackerQ.qsize())+", Refresh Q: "+str(self.detectorOutQ.qsize())+", Result Q: "+str(self.resultQ.qsize()))
                 self.logger.flush()
                 time.sleep(1)
             self.detectorP.join()
