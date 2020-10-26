@@ -159,7 +159,7 @@ class Arbiter:
                     imagesInQ=""
                     for i in range(1,qsize):
                         tmp=detectorInQ.get()
-                        imagesInQ = imagesInQ+str(frame[1])+" ,"
+                        imagesInQ = imagesInQ+str(tmp[1])+" ,"
                         detectorInQ.put(tmp)
                     self.logger.error("We had "+str(qsize)+" image that were from numbers: "+imagesInQ)
                     # raise Exception("Fatal error, detectorInQ has more than 1 frame!!")
