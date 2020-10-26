@@ -199,7 +199,7 @@ class MNR_logger():
             msgQSize = msgQSize + sys.getsizeof(data)
             self.fAll.write(data + "\n")
         print("Size of msgQ was: ", str(msgQSize))
-        self.fAll.write("Size of msgQ was: " + str(msgQSize))
+        self.fAll.write("Size of msgQ was: " + str(msgQSize)+"\n")
         self.fAll.flush()
         self.fArbiterResults.flush()
 
@@ -210,6 +210,6 @@ class MNR_logger():
             msgQSize = msgQSize+sys.getsizeof(data)
             self.fAll.write(data+"\n")
         print("Size of msgQ was: ",str(msgQSize))
-        self.fAll.write("Size of msgQ was: "+str(msgQSize))
+        self.fAll.write("Size of msgQ was: "+str(msgQSize)+"\n")
         self.fArbiterResults.close()
         self.fAll.close()
