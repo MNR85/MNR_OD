@@ -17,8 +17,6 @@ class MNR_logger():
         self.msgQ = Queue(maxsize=0)
         self.startTime=0
 
-
-
     def start(self, startTime=0):
         self.startTime=startTime
         if not os.path.exists(self.rootPath):
@@ -27,6 +25,7 @@ class MNR_logger():
         os.makedirs(self.trackPath)
         os.makedirs(self.detectPath)
         self.fArbiterResults = open(self.childPath + "/arbiter_result.csv", "w")
+        self.fEval = open(self.childPath + "/eval.csv", "w")
         self.fAll = open(self.childPath + "/all.log", "w")
         strCSV = "frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency"
 
@@ -192,6 +191,9 @@ class MNR_logger():
         self.fArbiterResults.write(newLine +self.lastPlatformStat+"\n")
         # self.fArbiterResults.flush()
 
+    def csvEval(self, newLine):
+        self.fEval.write(newLine +"\n")
+
     def flush(self):
         msgQSize = sys.getsizeof(self.msgQ)
         while (not self.msgQ.empty()):
@@ -199,7 +201,7 @@ class MNR_logger():
             msgQSize = msgQSize + sys.getsizeof(data)
             self.fAll.write(data + "\n")
         print("Size of msgQ was: ", str(msgQSize))
-        self.fAll.write("Size of msgQ was: " + str(msgQSize))
+        self.fAll.write("Size of msgQ was: " + str(msgQSize)+"\n")
         self.fAll.flush()
         self.fArbiterResults.flush()
 
@@ -210,6 +212,6 @@ class MNR_logger():
             msgQSize = msgQSize+sys.getsizeof(data)
             self.fAll.write(data+"\n")
         print("Size of msgQ was: ",str(msgQSize))
-        self.fAll.write("Size of msgQ was: "+str(msgQSize))
+        self.fAll.write("Size of msgQ was: "+str(msgQSize)+"\n")
         self.fArbiterResults.close()
         self.fAll.close()
