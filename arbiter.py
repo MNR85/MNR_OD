@@ -13,11 +13,12 @@ import MNR_Net
 import time
 import numpy as np
 from scipy.optimize import linear_sum_assignment
+# from collections import deque
 import xml.etree.ElementTree as ET
 
 
 class Arbiter:
-    def __init__(self, prototxt, model, useGpu, serial, trackType, logger=None, ratio=5, fixedRatio=False, eval=False):
+    def __init__(self, prototxt, model, useGpu, serial, trackType, logger=None, ratio=5, fixedRatio=False, eval=False, evalPath=""):
         self.serialProcessing = serial
         self.detectTrackRatio = ratio
         self.cvTracker = cvTracker.cvTracker(trackType, logger)
@@ -37,6 +38,20 @@ class Arbiter:
                         'cow', 'diningtable', 'dog', 'horse',
                         'motorbike', 'person', 'pottedplant',
                         'sheep', 'sofa', 'train', 'tvmonitor')
+        # from http://image-net.org/challenges/LSVRC/2015/browse-vid-synsets
+        self.imageNetDictionary={
+            'n02691156':'aeroplane',
+            'n02834778':'bicycle',
+            'n01503061':'bird',
+            'n02924116':'bus',
+            'n02958343':'car',
+            'n02402425':'cow',
+            'n02084071':'dog',
+            'n02121808':'cat',
+            'n02374451':'horse',
+            'n03790512':'motorbike',
+            'n04468005':'train',
+        }
 
         # --------- times
         self.trackTime = 0
@@ -45,6 +60,7 @@ class Arbiter:
         self.boxTime = 0
 
         self.eval = eval
+        self.evalPath = evalPath
         self.fixedRatio = fixedRatio
 
         # --------- process
@@ -77,11 +93,12 @@ class Arbiter:
             self.TrackCounter = Value('i', 0)
             self.resultCounter = Value('i', 0)
             self.detectorP = Process(name='dnn', target=self.detectorThread, args=(
-            self.detector, self.detectorInQ, self.detectorOutQ, self.processingCNN, self.initCNN, self.CnnCounter,
-            self.getOutFromCNN))
+                self.detector, self.detectorInQ, self.detectorOutQ, self.processingCNN, self.initCNN, self.CnnCounter,
+                self.getOutFromCNN))
             self.detectorP.daemon = True  # background run
             self.trackerP = Process(name='track', target=self.trackerThread, args=(
-            self.detectorOutQ, self.detectorImage, self.trackerQ, self.resultQ, self.TrackCounter, self.RefreshCounter))
+                self.detectorOutQ, self.detectorImage, self.trackerQ, self.resultQ, self.TrackCounter,
+                self.RefreshCounter))
             self.trackerP.daemon = True  # background run
             self.getResultP = Process(name='getR', target=self.getResultThread,
                                       args=(self.resultQ, self.resultCounter))  # , args=[detector.runThread])
@@ -195,6 +212,7 @@ class Arbiter:
 
     def trackerThread(self, detectorOutQ, detectorImage, trackerQ, resultQ, TrackCounter, RefreshCounter):
         self.logger.info("trackerThread id = " + str(os.getpid()))
+        # track_id_list = deque(['1', '2', '3', '4', '5', '6', '7', '7', '8', '9', '10'])
         detection = []
         detectionFrameNum = -1
         detectionTime = "x"
@@ -215,9 +233,9 @@ class Arbiter:
                     continue
                 detectionTime = time.time()
                 detectionFrameNum = detectionOut[1]
-                if (boxes is not None and len(detection) != 0):
-                    self.matchTrackerDetection(boxes, detection[0, 0, :, 1], detectionOut[0])
-
+                priorClass = detection[0, 0, :, 1]
+                # if (boxes is not None and len(detection) != 0):
+                #     matched, unmatched_dets, unmatched_trks=self.matchTrackerDetection(boxes, priorClass, detectionOut[0])
                 detection = detectionOut[0]
                 detectionCount = len(detection[0, 0, :, 1]) if detection[0, 0, :, 1][0] != -1 else 0
                 frame = detectorImage.get()
@@ -232,8 +250,14 @@ class Arbiter:
                 (success, boxes) = self.cvTracker.track(frame[0])
                 if (frame[1]):
                     # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
-                    resultQ.put([self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(),
-                                 detectionFrameNum, detectionTime, detectionCount])
+                    result = [self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(),
+                              detectionFrameNum, detectionTime, detectionCount, detection, boxes, success, priorClass]
+                    # if (self.eval):
+                    #     result.append(detection)
+                    #     result.append(boxes)
+                    #     result.append(success)
+                    #     result.append(priorClass)
+                    resultQ.put(result)
                     TrackCounter.value = TrackCounter.value + 1
                     fps.update()
         resultQ.put(self.stopSignal)
@@ -255,7 +279,8 @@ class Arbiter:
                     break
                 resultCounter.value = resultCounter.value + 1
                 fps.update()
-                self.logger.imwrite(format(resultCounter.value, '05d') + ".jpg", im[0])
+
+                # Decode
                 frameNum = im[1]
                 inputTime = im[2] - self.startTime
                 trackOutTime = im[3] - self.startTime
@@ -264,6 +289,15 @@ class Arbiter:
                     im[5] = im[2]
                 detectOutTime = im[5] - self.startTime
                 detectCount = im[6]
+                detection = im[7]
+                boxes = im[8]
+                success = im[9]
+                priorClass = im[10]
+
+                if(self.eval):
+                    aBoxes, aLabels, aTrackIds = self.readAnnotation(frameNum)
+
+                self.logger.imwrite(format(resultCounter.value, '05d') + ".jpg", self.draw(im[0], detection, success, boxes))
                 self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
                     inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
                     trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
@@ -278,6 +312,33 @@ class Arbiter:
         fps.stop()
         self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()), True)
         self.logger.info("Get result: approx. FPS: {:.2f}".format(fps.fps()), True)
+
+    def readAnnotation(self, counter, w=300, h=300):
+        tree = ET.parse(self.evalPath+format(counter, '06d'))
+        root = tree.getroot()
+
+        boxes = list()
+        labels = list()
+        trackIds = list()
+        for object in root.iter('object'):
+            trackId = int(object.find('trackid').text)
+
+            label = object.find('name').text.lower().strip()
+            if label not in self.imageNetDictionary:
+                self.logger.error("Unrecognized label: "+label)
+                continue
+
+            bbox = object.find('bndbox')
+            xmin = int(bbox.find('xmin').text) #- 1
+            ymin = int(bbox.find('ymin').text) #- 1
+            xmax = int(bbox.find('xmax').text) #- 1
+            ymax = int(bbox.find('ymax').text) #- 1
+
+            boxes.append([xmin, ymin, xmax, ymax])
+            labels.append(self.imageNetDictionary[label])
+            trackIds.append(trackId)
+
+        return boxes, labels, trackIds
 
     def matchTrackerDetection(self, trackers, priorClasses, detection, iou_thrd=0.3, h=300, w=300):
         cls = detection[0, 0, :, 1]
@@ -329,7 +390,7 @@ class Arbiter:
         a[0], a[1], a[2], a[3] <-> left, up, right, bottom
         '''
 
-        a = (a[0], a[1], a[0] + a[2], a[1] + a[3]) # convert x y w h to x1 y1 x2 y2
+        a = (a[0], a[1], a[0] + a[2], a[1] + a[3])  # convert x y w h to x1 y1 x2 y2
         b = (b[0], b[1], b[0] + b[2], b[1] + b[3])
 
         w_intsec = np.maximum(0, (np.minimum(a[2], b[2]) - np.maximum(a[0], b[0])))
