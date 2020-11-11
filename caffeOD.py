@@ -19,7 +19,7 @@ parser.add_argument("-m", "--model", required=False, type=str,
                     default='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.caffemodel',
                     help="path to Caffe pre-trained model", metavar="FILE")
 parser.add_argument("-v", "--video", required=False, type=str,
-                    default='test_images/chair.mp4', help="path to video input file", metavar="FILE")
+                    default='test_images/ILSVRC/train/ILSVRC2017_train_00006000.mp4', help="path to video input file", metavar="FILE")
 parser.add_argument("-t", "--tracker", required=False, type=str,
                     default='mosse', help="path to video input file", metavar="FILE")
 # parser.add_argument("-f", "--frame", required=False,
@@ -27,7 +27,7 @@ parser.add_argument("-t", "--tracker", required=False, type=str,
 # videoName="test_images/los_angeles.mp4"
 useGPU=True
 fixedRatio=True
-eval=False
+eval=True
 # serial=False
 # trackType='csrt'
 # protoFile='ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt'
@@ -36,7 +36,8 @@ args = vars(parser.parse_args())
 
 # -------------- Objs
 logger=MNR_logger("results")
-arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger)#, fixedRatio, eval)
+
+arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger, eval, "test_images/ILSVRC/train/ILSVRC2017_train_00006000/")#, fixedRatio, )
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)

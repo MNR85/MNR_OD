@@ -18,7 +18,8 @@ import xml.etree.ElementTree as ET
 
 
 class Arbiter:
-    def __init__(self, prototxt, model, useGpu, serial, trackType, logger=None, ratio=5, fixedRatio=False, eval=False, evalPath=""):
+    def __init__(self, prototxt, model, useGpu, serial, trackType, logger=None, eval=False,
+                 evalPath="", ratio=5, fixedRatio=False):
         self.serialProcessing = serial
         self.detectTrackRatio = ratio
         self.cvTracker = cvTracker.cvTracker(trackType, logger)
@@ -39,18 +40,18 @@ class Arbiter:
                         'motorbike', 'person', 'pottedplant',
                         'sheep', 'sofa', 'train', 'tvmonitor')
         # from http://image-net.org/challenges/LSVRC/2015/browse-vid-synsets
-        self.imageNetDictionary={
-            'n02691156':'aeroplane',
-            'n02834778':'bicycle',
-            'n01503061':'bird',
-            'n02924116':'bus',
-            'n02958343':'car',
-            'n02402425':'cow',
-            'n02084071':'dog',
-            'n02121808':'cat',
-            'n02374451':'horse',
-            'n03790512':'motorbike',
-            'n04468005':'train',
+        self.imageNetDictionary = {
+            'n02691156': 'aeroplane',
+            'n02834778': 'bicycle',
+            'n01503061': 'bird',
+            'n02924116': 'bus',
+            'n02958343': 'car',
+            'n02402425': 'cow',
+            'n02084071': 'dog',
+            'n02121808': 'cat',
+            'n02374451': 'horse',
+            'n03790512': 'motorbike',
+            'n04468005': 'train',
         }
 
         # --------- times
@@ -214,6 +215,7 @@ class Arbiter:
         self.logger.info("trackerThread id = " + str(os.getpid()))
         # track_id_list = deque(['1', '2', '3', '4', '5', '6', '7', '7', '8', '9', '10'])
         detection = []
+        priorClass = []
         detectionFrameNum = -1
         detectionTime = "x"
         detectionCount = 0
@@ -233,11 +235,12 @@ class Arbiter:
                     continue
                 detectionTime = time.time()
                 detectionFrameNum = detectionOut[1]
-                priorClass = detection[0, 0, :, 1]
+
                 # if (boxes is not None and len(detection) != 0):
                 #     matched, unmatched_dets, unmatched_trks=self.matchTrackerDetection(boxes, priorClass, detectionOut[0])
                 detection = detectionOut[0]
                 detectionCount = len(detection[0, 0, :, 1]) if detection[0, 0, :, 1][0] != -1 else 0
+                priorClass = detection[0, 0, :, 1]
                 frame = detectorImage.get()
                 not self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
                 RefreshCounter.value = RefreshCounter.value + 1
@@ -250,8 +253,8 @@ class Arbiter:
                 (success, boxes) = self.cvTracker.track(frame[0])
                 if (frame[1]):
                     # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
-                    result = [self.draw(frame[0], detection, success, boxes), frame[2], frame[3], time.time(),
-                              detectionFrameNum, detectionTime, detectionCount, detection, boxes, success, priorClass]
+                    result = [frame[0], frame[2], frame[3], time.time(), detectionFrameNum, detectionTime,
+                              detectionCount, detection, boxes, success, priorClass]
                     # if (self.eval):
                     #     result.append(detection)
                     #     result.append(boxes)
@@ -271,6 +274,7 @@ class Arbiter:
         lastInputTime = -1
         lastTrackOutTime = -1
         lastDetectOutTime = -1
+        lastFrameDetectNum = -1
         fps = FPS().start()
         while (True):
             if (not resultQ.empty()):
@@ -294,10 +298,19 @@ class Arbiter:
                 success = im[9]
                 priorClass = im[10]
 
-                if(self.eval):
-                    aBoxes, aLabels, aTrackIds = self.readAnnotation(frameNum)
-
-                self.logger.imwrite(format(resultCounter.value, '05d') + ".jpg", self.draw(im[0], detection, success, boxes))
+                if (self.eval and len(detection) != 0):
+                    boxesGT, labelsGT, trackIdsGT = self.readAnnotation(frameNum)
+                    if(lastFrameDetectNum != frameDetectNum): # new detection
+                        boxesDet = detection[0, 0, :, 3:7] * np.array([300, 300, 300, 300])
+                        clasDet = detection[0, 0, :, 1]
+                        matchedAtDetect, unmatchedGTAtDetect, unmatchedDetect = self.matchDetections(boxesGT, labelsGT, boxesDet, clasDet)
+                    matchedAtTrack, unmatchedGTAtTrack, unmatchedTrack = self.matchDetections(boxesGT, labelsGT, boxes, priorClass, True)
+                    self.logger.csvEval(
+                        str(frameNum) + ", " + str(len(matchedAtTrack)) + ", " + str(len(unmatchedTrack)) + ", " + str(
+                            len(unmatchedGTAtTrack)) + ", " + str(len(matchedAtDetect)) + ", " + str(
+                            len(unmatchedDetect)) + ", " + str(len(unmatchedGTAtDetect)))
+                self.logger.imwrite(format(resultCounter.value, '05d') + ".jpg",
+                                    self.draw(im[0], detection, success, boxes))
                 self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
                     inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
                     trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
@@ -314,31 +327,75 @@ class Arbiter:
         self.logger.info("Get result: approx. FPS: {:.2f}".format(fps.fps()), True)
 
     def readAnnotation(self, counter, w=300, h=300):
-        tree = ET.parse(self.evalPath+format(counter, '06d'))
+        tree = ET.parse(self.evalPath + format(counter, '06d') + ".xml")
         root = tree.getroot()
 
         boxes = list()
         labels = list()
         trackIds = list()
+        size = root.find("size")
+        width = int(size.find("width").text)
+        height = int(size.find("height").text)
         for object in root.iter('object'):
             trackId = int(object.find('trackid').text)
 
             label = object.find('name').text.lower().strip()
             if label not in self.imageNetDictionary:
-                self.logger.error("Unrecognized label: "+label)
+                self.logger.error("Unrecognized label: " + label)
                 continue
 
             bbox = object.find('bndbox')
-            xmin = int(bbox.find('xmin').text) #- 1
-            ymin = int(bbox.find('ymin').text) #- 1
-            xmax = int(bbox.find('xmax').text) #- 1
-            ymax = int(bbox.find('ymax').text) #- 1
+            xmin = int(bbox.find('xmin').text) * w / width  # - 1
+            ymin = int(bbox.find('ymin').text) * h / height  # - 1
+            xmax = int(bbox.find('xmax').text) * w / width  # - 1
+            ymax = int(bbox.find('ymax').text) * h / height  # - 1
 
             boxes.append([xmin, ymin, xmax, ymax])
             labels.append(self.imageNetDictionary[label])
             trackIds.append(trackId)
 
         return boxes, labels, trackIds
+
+    def matchDetections(self, boxesGT, classesGT, boxesDet, classesDet, isInTrackFormat=False, iou_thrd=0.5, h=300, w=300):
+        IOU_mat = np.zeros((len(boxesGT), len(boxesDet)), dtype=np.float32)
+        if (isInTrackFormat): # just for precision calculation.
+            boxesDet = np.asarray([boxesDet[:,0], boxesDet[:,1], boxesDet[:,0] + boxesDet[:,2], boxesDet[:,1] + boxesDet[:,3]]).transpose()
+        for g, gt in enumerate(boxesGT):
+            # trk = convert_to_cv2bbox(trk)
+            for d, det in enumerate(boxesDet):
+                # tmp_tracker = self.tracker_list[t]
+                IOU_mat[g, d] = self.box_iou2(gt, det) if (classesGT[g] == self.CLASSES[int(classesDet[d])]) else 0  # MNR
+
+        matched_idx = np.asarray(linear_sum_assignment(-IOU_mat)).transpose()
+
+        unmatchedGT, unmatchedDet = [], []
+        for g, gt in enumerate(boxesGT):
+            if (g not in matched_idx[:,0]):
+                unmatchedGT.append(g)
+
+        for d, det in enumerate(boxesDet):
+            if (d not in matched_idx[:,1]):
+                unmatchedDet.append(d)
+
+        matches = []
+
+        # For creating trackers we consider any detection with an
+        # overlap less than iou_thrd to signifiy the existence of
+        # an untracked object
+
+        for m in matched_idx:
+            if (IOU_mat[m[0], m[1]] < iou_thrd):
+                unmatchedGT.append(m[0])
+                unmatchedDet.append(m[1])
+            else:
+                matches.append(m.reshape(1, 2))
+
+        if (len(matches) == 0):
+            matches = np.empty((0, 2), dtype=int)
+        else:
+            matches = np.concatenate(matches, axis=0)
+
+        return matches, np.array(unmatchedGT), np.array(unmatchedDet)
 
     def matchTrackerDetection(self, trackers, priorClasses, detection, iou_thrd=0.3, h=300, w=300):
         cls = detection[0, 0, :, 1]
@@ -403,15 +460,15 @@ class Arbiter:
 
     def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[]):
         for box in trackBoxes:
-            (x, y, w, h) = [int(v) for v in box]
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            sub_img = frame[y:y + h, x:x + w]
+            (x1, y1, x2, y2) = [int(v) for v in box]
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            sub_img = frame[y1:y2, x1:x2]
             white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255 if validTrackBoxes else 128
 
             res = cv2.addWeighted(sub_img, 0.5, white_rect, 0.5, 1.0)
 
             # Putting the image back to its position
-            frame[y:y + h, x:x + w] = res
+            frame[y1:y2, x1:x2] = res
         if (len(detection) != 0):
             h = frame.shape[0]
             w = frame.shape[1]

@@ -71,13 +71,13 @@ class MNR_logger():
             self.fuCPU = open(cpuUsageFile, "r")
             self.fuMem = open(memUsageFile, "r")
         self.fArbiterResults.write(strCSV + "\n")
+        self.fEval.write("frameNumber, matchedTrack, unmatchedTrack, unmatchedGTAtTrack, matchedDetect, unmatchedDetect, unmatchedGTAtDetect\n")
         # need for store previous state
         self.cpuTotal = {}
         self.cpuIdle = {}
         self.lastPlatformStat = ""
         self.lastPlatformStatUpdate=time.time()-1
         self.cpuStat()
-
 
     def cpuStat(self):
         self.fuCPU.seek(0)
@@ -204,6 +204,7 @@ class MNR_logger():
         self.fAll.write("Size of msgQ was: " + str(msgQSize)+"\n")
         self.fAll.flush()
         self.fArbiterResults.flush()
+        self.fEval.flush()
 
     def stop(self):
         msgQSize=sys.getsizeof(self.msgQ)
@@ -214,4 +215,5 @@ class MNR_logger():
         print("Size of msgQ was: ",str(msgQSize))
         self.fAll.write("Size of msgQ was: "+str(msgQSize)+"\n")
         self.fArbiterResults.close()
+        self.fEval.close()
         self.fAll.close()
