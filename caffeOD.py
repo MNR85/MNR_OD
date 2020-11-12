@@ -28,7 +28,8 @@ parser.add_argument("-t", "--tracker", required=False, type=str,
 #                     type=int, default=20, help="Frame count")
 # videoName="test_images/los_angeles.mp4"
 useGPU=True
-fixedRatio=True
+fixedRatio=False
+ratio=10
 eval=True
 # serial=False
 # trackType='csrt'
@@ -39,7 +40,7 @@ args = vars(parser.parse_args())
 # -------------- Objs
 logger=MNR_logger("results")
 
-arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger, eval, args['annotation'])#, fixedRatio, )
+arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger, eval, args['annotation'], ratio, fixedRatio, )
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)

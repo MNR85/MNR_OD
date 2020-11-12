@@ -182,7 +182,7 @@ class MNR_logger():
 
     def csv(self, newLine):
         nowT=time.time()
-        if(nowT-self.lastPlatformStatUpdate>1):
+        if(nowT-self.lastPlatformStatUpdate>1): # can do cpu measure only speedy
             self.lastPlatformStatUpdate=nowT
             if (self.platformNod == "tx2-desktop"):
                 self.lastPlatformStat=self.tegrastat()
