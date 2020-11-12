@@ -20,6 +20,8 @@ parser.add_argument("-m", "--model", required=False, type=str,
                     help="path to Caffe pre-trained model", metavar="FILE")
 parser.add_argument("-v", "--video", required=False, type=str,
                     default='test_images/ILSVRC/train/ILSVRC2017_train_00006000.mp4', help="path to video input file", metavar="FILE")
+parser.add_argument("-a", "--annotation", required=False, type=str,
+                    default='test_images/ILSVRC/train/ILSVRC2017_train_00006000/', help="path to annotation folder", metavar="FILE")
 parser.add_argument("-t", "--tracker", required=False, type=str,
                     default='mosse', help="path to video input file", metavar="FILE")
 # parser.add_argument("-f", "--frame", required=False,
@@ -37,7 +39,7 @@ args = vars(parser.parse_args())
 # -------------- Objs
 logger=MNR_logger("results")
 
-arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger, eval, "test_images/ILSVRC/train/ILSVRC2017_train_00006000/")#, fixedRatio, )
+arbiter = Arbiter(args['prototxt'], args['model'], useGPU, args['serial'], args['tracker'], logger, eval, args['annotation'])#, fixedRatio, )
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)

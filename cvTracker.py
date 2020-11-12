@@ -36,11 +36,12 @@ class cvTracker():
         w = frame.shape[1]
         cls = detection[0, 0, :, 1]
         conf = detection[0, 0, :, 2]
+        classes=[]
         # box, conf, cls = (box.astype(np.int32), conf, cls)
         box = (detection[0, 0, :, 3:7] * np.array([w, h, w, h])).astype(np.int32)
         if (conf[0] < 0):
             self.print('bad detection at frame: ' + str(detectionFrameNum) + ', continue tracking')
-            return False
+            return classes
 
         # initialize OpenCV's special multi-object tracker
         self.trackers = cv2.MultiTracker_create()
@@ -66,11 +67,12 @@ class cvTracker():
                 bbox = (startX, startY, endX - startX, endY - startY)
                 # print(box)
                 self.trackers.add(tracker, frame, bbox)  # box)
+                classes.append(cls[i])
         # print()
         # t3 = time.time()
         # self.totalT = self.totalT + t3-t2
         # print("create track: ",str(t2-t1),str(t3-t2))#,str(self.totalT))
-        return True
+        return classes
 
     def track(self, frame):
         # grab the updated bounding box coordinates (if any) for each
