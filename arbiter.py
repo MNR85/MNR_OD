@@ -242,7 +242,7 @@ class Arbiter:
                 detectionCount = len(detection[0, 0, :, 1]) if detection[0, 0, :, 1][0] != -1 else 0
                 # priorClass = detection[0, 0, :, 1]
                 frame = detectorImage.get()
-                priorClass= self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
+                priorClass = self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
                 RefreshCounter.value = RefreshCounter.value + 1
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
@@ -299,28 +299,33 @@ class Arbiter:
                 clasTrack = im[10]
 
                 boxesGT = []
-                newDetection=False
+                newDetection = False
                 if (len(boxesTrack) != 0):
                     boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
-                                           boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
+                                             boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
                 if (self.eval and len(detection) != 0):
                     boxesGT, labelsGT, trackIdsGT = self.readAnnotation(frameNum)
-                    if(lastFrameDetectNum != frameDetectNum): # new detection
-                        newDetection=True
+                    if (lastFrameDetectNum != frameDetectNum):  # new detection
+                        newDetection = True
                         h = im[0].shape[0]
                         w = im[0].shape[1]
                         boxesDet = detection[0, 0, :, 3:7] * np.array([w, h, w, h])
                         clasDet = detection[0, 0, :, 1]
-                        matchedAtDetect, unmatchedGTAtDetect, unmatchedDetect = self.matchDetections(boxesGT, labelsGT, boxesDet, clasDet)
+                        matchedAtDetect, unmatchedGTAtDetect, unmatchedDetect = self.matchDetections(boxesGT, labelsGT,
+                                                                                                     boxesDet, clasDet)
                     else:
-                        newDetection=False
-                    matchedAtTrack, unmatchedGTAtTrack, unmatchedTrack = self.matchDetections(boxesGT, labelsGT, boxesTrack, clasTrack)
+                        newDetection = False
+                        matchedAtDetect = []
+                        unmatchedGTAtDetect = []
+                        unmatchedDetect = []
+                    matchedAtTrack, unmatchedGTAtTrack, unmatchedTrack = self.matchDetections(boxesGT, labelsGT,
+                                                                                              boxesTrack, clasTrack)
                     self.logger.csvEval(
                         str(frameNum) + ", " + str(len(matchedAtTrack)) + ", " + str(len(unmatchedTrack)) + ", " + str(
                             len(unmatchedGTAtTrack)) + ", " + str(len(matchedAtDetect)) + ", " + str(
                             len(unmatchedDetect)) + ", " + str(len(unmatchedGTAtDetect)))
                 self.logger.imwrite(format(resultCounter.value, '05d') + ".jpg",
-                                    self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT,newDetection))
+                                    self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT, newDetection))
                 self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
                     inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
                     trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
@@ -329,6 +334,7 @@ class Arbiter:
                 lastInputTime = inputTime
                 lastTrackOutTime = trackOutTime
                 lastDetectOutTime = detectOutTime
+                lastFrameDetectNum = frameDetectNum
                 # cv2.imshow("tracker",im)
                 # cv2.waitKey(1)
         self.logger.info("Done Get result: " + str(resultQ.qsize()), True)
@@ -372,17 +378,18 @@ class Arbiter:
             # trk = convert_to_cv2bbox(trk)
             for d, det in enumerate(boxesDet):
                 # tmp_tracker = self.tracker_list[t]
-                IOU_mat[g, d] = self.box_iou2(gt, det) if (classesGT[g] == self.CLASSES[int(classesDet[d])]) else 0  # MNR
+                IOU_mat[g, d] = self.box_iou2(gt, det) if (
+                            classesGT[g] == self.CLASSES[int(classesDet[d])]) else 0  # MNR
 
         matched_idx = np.asarray(linear_sum_assignment(-IOU_mat)).transpose()
 
         unmatchedGT, unmatchedDet = [], []
         for g, gt in enumerate(boxesGT):
-            if (g not in matched_idx[:,0]):
+            if (g not in matched_idx[:, 0]):
                 unmatchedGT.append(g)
 
         for d, det in enumerate(boxesDet):
-            if (d not in matched_idx[:,1]):
+            if (d not in matched_idx[:, 1]):
                 unmatchedDet.append(d)
 
         matches = []
@@ -466,11 +473,11 @@ class Arbiter:
 
         return float(s_intsec) / (s_a + s_b - s_intsec)
 
-    def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[], boxesGT=[],newDetection=False):
+    def draw(self, frame, detection, validTrackBoxes=False, trackBoxes=[], boxesGT=[], newDetection=False):
         for box in boxesGT:
             p1 = (int(box[0]), int(box[1]))
             p2 = (int(box[2]), int(box[3]))
-            cv2.rectangle(frame, p1, p2, (0, 255, 0), 4) # BGR
+            cv2.rectangle(frame, p1, p2, (0, 255, 0), 4)  # BGR
         for box in trackBoxes:
             (x1, y1, x2, y2) = [int(v) for v in box]
             cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
