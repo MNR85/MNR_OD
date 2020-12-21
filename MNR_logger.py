@@ -71,7 +71,7 @@ class MNR_logger():
             self.fuCPU = open(cpuUsageFile, "r")
             self.fuMem = open(memUsageFile, "r")
         self.fArbiterResults.write(strCSV + "\n")
-        self.fEval.write("frameNumber, matchedTrack, unmatchedTrack, unmatchedGTAtTrack, matchedDetect, unmatchedDetect, unmatchedGTAtDetect\n")
+        self.fEval.write("frameNumber, totalMatched, totalMissed, totalWrong, matchedTrack, unmatchedTrack, unmatchedGTAtTrack, matchedDetect, unmatchedDetect, unmatchedGTAtDetect\n")
         # need for store previous state
         self.cpuTotal = {}
         self.cpuIdle = {}
