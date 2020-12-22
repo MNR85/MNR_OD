@@ -33,6 +33,7 @@ args = vars(parser.parse_args())
 #                     type=int, default=20, help="Frame count")
 # videoName="test_images/los_angeles.mp4"
 fixedRatio=not (args['ratio'] is None)
+fixedRatio=True if args['serial'] else fixedRatio
 fixedTracker=True
 # ratio=10
 # eval=True

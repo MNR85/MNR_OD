@@ -25,7 +25,7 @@ class Arbiter:
 
         # --------- arbiter objects
         self.serialProcessing = serial
-        self.detectTrackRatio = detectTrackRatio
+        self.detectTrackRatio = int(detectTrackRatio) if (not detectTrackRatio is None) else 5
         self.cvTracker = cvTracker.cvTracker(trackType, logger)
         self.detector = MNR_Net.Detector(prototxt, model)
         self.useGpu = useGpu
