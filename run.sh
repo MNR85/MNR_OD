@@ -32,7 +32,7 @@ for p in "${prototxt[@]}"; do
                     a="python3 caffeOD.py"
                     echo "$cmd"
                     echo "$cmd">>results/runLog.log
-                    #eval $cmd
+                    eval $cmd
                 done
 
             done
