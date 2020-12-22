@@ -12,6 +12,8 @@ parser.add_argument("-g", '--gpu', required=False,
                     action='store_true', help="Enable GPU boost")
 parser.add_argument("-s", "--serial", required=False,
                     action='store_true', help="Serial or parallel detection")
+parser.add_argument("-d", '--debug', required=False,
+                    action='store_true', help="Debug mode")
 parser.add_argument("-e", '--eval', required=False,
                     action='store_true', help="Enable evaluation")
 parser.add_argument("-r", "--ratio", required=False, type=int,
@@ -44,7 +46,7 @@ fixedTracker=True
 # -------------- Objs
 logger=MNR_logger("results")
 
-arbiter = Arbiter(args['prototxt'], args['model'], args['gpu'], args['serial'], args['tracker'],fixedTracker, logger, args['eval'], args['annotation'], args['ratio'], fixedRatio, )
+arbiter = Arbiter(args['prototxt'], args['model'], args['gpu'], args['serial'], args['tracker'],fixedTracker, logger, args['eval'], args['annotation'], args['ratio'], fixedRatio, args['debug'], )
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)
@@ -62,20 +64,17 @@ arbiter.logger.info("Prototxt is: "+args['prototxt'])
 
 fps = FPS().start()
 counter=0
-# try:
-while(cap.isOpened()): # and counter < 2000):
+while(cap.isOpened()):
     ret, frame = cap.read()
     if ret == True:
         fps.update()
         resized=cv2.resize(frame, (300, 300))
-        cv2.putText(resized, str(counter), (20,20), cv2.FONT_ITALIC, 0.6, (0, 0, 255), 1)
+        if (args['debug']):
+            cv2.putText(resized, str(counter), (20,20), cv2.FONT_ITALIC, 0.6, (0, 0, 255), 1)
         arbiter.newImage(resized, counter)
         counter = counter + 1
-        # time.sleep(0.05)
     else:
         break
-# except Exception as e:
-#     print("Exception: ",e)
 arbiter.logger.info("Finished stream", True)
 fps.stop()
 arbiter.logger.info("Input frame: elasped time: {:.2f}".format(fps.elapsed()), True)

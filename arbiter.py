@@ -19,7 +19,7 @@ import xml.etree.ElementTree as ET
 
 class Arbiter:
     def __init__(self, prototxt, model, useGpu, serial, trackType, fixedTrackType=True, logger=None, eval=False,
-                 evalPath="", detectTrackRatio=5, fixedRatio=False):
+                 evalPath="", detectTrackRatio=5, fixedRatio=False, debugMode=False):
         # --------- logger
         self.logger = logger
 
@@ -32,6 +32,7 @@ class Arbiter:
         self.eval = eval
         self.evalPath = evalPath
         self.fixedRatio = fixedRatio
+        self.debugMode = debugMode
 
         # --------- msg
         msgMode = "Serial" if self.serialProcessing else "Pipeline"
@@ -128,67 +129,70 @@ class Arbiter:
             self.logger.info("All process finished")
             self.logger.info("With pipeline")
 
-    def newImage(self, frame, counter):
+    def newImage(self, frame, frameNum):
         if (self.serialProcessing):  # all pipeline process are mixed here!
-            inputTime = time.time() - self.startTime
-            frameNum = counter
+            if self.debugMode:
+                inputTime = time.time() - self.startTime
 
-            if (counter % self.detectTrackRatio == 0):  # detection
+            if (frameNum % self.detectTrackRatio == 0):  # detection
                 self.detection = self.detector.serialDetector(frame)['detection_out']
-                self.frameDetectNum = counter
-                self.detectOutTime = time.time() - self.startTime
-                self.detectCount = len(self.detection[0, 0, :, 1]) if \
-                    self.detection[0, 0, :, 1][0] != -1 else 0
+                self.frameDetectNum = frameNum
+                if self.debugMode:
+                    self.detectOutTime = time.time() - self.startTime
+                    self.detectCount = len(self.detection[0, 0, :, 1]) if self.detection[0, 0, :, 1][0] != -1 else 0
                 (succesTrack, boxesTrack, self.clasTrack) = ([], [], [])
             else:  # tracking
                 if (frameNum == self.frameDetectNum + 1):
-                    self.clasTrack = self.cvTracker.refreshTrack(frame, self.detection, counter)
+                    self.clasTrack = self.cvTracker.refreshTrack(frame, self.detection, frameNum)
                 (succesTrack, boxesTrack) = self.cvTracker.track(frame)
-                self.trackOutTime = time.time() - self.startTime
-                if (len(boxesTrack) != 0):
-                    boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1],
-                                             boxesTrack[:, 0] + boxesTrack[:, 2],
-                                             boxesTrack[:, 1] + boxesTrack[:,
-                                                                3]]).transpose()
-            boxesGT, newDetection = self.evaluate(self.detection, frame, frameNum,
-                                                  self.frameDetectNum, self.lastFrameDetectNum,
-                                                  boxesTrack, self.clasTrack)
-            self.logger.imwrite(format(frameNum, '05d') + ".jpg",
-                                self.draw(frame, self.detection, succesTrack, boxesTrack,
-                                          boxesGT, newDetection))
-            self.logger.csv(str(frameNum) + ", " + str(self.frameDetectNum) + ", " + str(
-                self.detectCount) + ", " + str(
-                inputTime) + ", " + str(inputTime - self.lastInputTime) + ", " + str(
-                self.trackOutTime) + ", " + str(
-                self.trackOutTime - self.lastTrackOutTime) + ", " + str(
-                self.detectOutTime) + ", " + str(
-                self.detectOutTime - self.lastDetectOutTime) + ", " + str(
-                self.trackOutTime - inputTime) + ", " + str(
-                self.trackOutTime - self.detectOutTime))
-            self.lastInputTime = inputTime
-            self.lastTrackOutTime = self.trackOutTime
-            self.lastDetectOutTime = self.detectOutTime
-            self.lastFrameDetectNum = self.frameDetectNum
+                if(self.debugMode):
+                    self.trackOutTime = time.time() - self.startTime
+                    if (len(boxesTrack) != 0):
+                        boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1],
+                                                 boxesTrack[:, 0] + boxesTrack[:, 2],
+                                                 boxesTrack[:, 1] + boxesTrack[:,
+                                                                    3]]).transpose()
+            if (self.debugMode):
+                boxesGT, newDetection = self.evaluate(self.detection, frame, frameNum,
+                                                      self.frameDetectNum, self.lastFrameDetectNum,
+                                                      boxesTrack, self.clasTrack)
+                self.logger.imwrite(format(frameNum, '05d') + ".jpg",
+                                    self.draw(frame, self.detection, succesTrack, boxesTrack,
+                                              boxesGT, newDetection))
+                self.logger.csv(str(frameNum) + ", " + str(self.frameDetectNum) + ", " + str(
+                    self.detectCount) + ", " + str(
+                    inputTime) + ", " + str(inputTime - self.lastInputTime) + ", " + str(
+                    self.trackOutTime) + ", " + str(
+                    self.trackOutTime - self.lastTrackOutTime) + ", " + str(
+                    self.detectOutTime) + ", " + str(
+                    self.detectOutTime - self.lastDetectOutTime) + ", " + str(
+                    self.trackOutTime - inputTime) + ", " + str(
+                    self.trackOutTime - self.detectOutTime))
+                self.lastInputTime = inputTime
+                self.lastTrackOutTime = self.trackOutTime
+                self.lastDetectOutTime = self.detectOutTime
+                self.lastFrameDetectNum = self.frameDetectNum
             self.fps.update()
         else:
-            while (self.fixedRatio and (counter % self.detectTrackRatio == 0) and self.processingCNN.value):
+            while (self.fixedRatio and (frameNum % self.detectTrackRatio == 0) and self.processingCNN.value):
                 time.sleep(0.001)  # this or pass??
             if (not self.processingCNN.value and (
-                    not self.fixedRatio or counter % self.detectTrackRatio == 0)):  # and counter%60==0):
-                remainTrackQ = self.trackerQ.qsize()
-                self.logger.info("will add " + str(self.imageQ.qsize()) + ", remained from last: " + str(remainTrackQ))
+                    not self.fixedRatio or frameNum % self.detectTrackRatio == 0)):  # and counter%60==0):
+                if (self.debugMode):
+                    remainTrackQ = self.trackerQ.qsize()
+                    self.logger.info("will add " + str(self.imageQ.qsize()) + ", remained from last: " + str(remainTrackQ))
                 while (not self.trackerQ.empty()):  # empty Q wait for getting tracker
                     time.sleep(0.001)
                 while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
                     self.trackerQ.put([self.imageQ.get(), False])
-                self.detectorInQ.put([frame, counter])
+                self.detectorInQ.put([frame, frameNum])
                 self.detectorImage.put(frame)
                 # t1 = time.time()
                 # while(not self.processingCNN.value):
                 #     pass
                 # self.logger.warning("timed passed to fetch detect image: "+str(time.time()-t1), True, True)
             self.imageQ.put(frame)
-            self.trackerQ.put([frame, True, counter, time.time()])  # frame, isFirstTime, frameCounter, frameInputTime
+            self.trackerQ.put([frame, True, frameNum, time.time()])  # frame, isFirstTime, frameCounter, frameInputTime
 
     def detectorThread(self, detector, detectorInQ, detectorOutQ, processingCNN, initCNN):
         detector.setRunMode(self.useGpu)
@@ -211,8 +215,6 @@ class Arbiter:
                     break
                 detections = detector.serialDetector(frame[0])
                 detectorOutQ.put([detections['detection_out'], frame[1]])  # detection out, frame num
-                # frame[0]=self.draw(frame[0], detections['detection_out'])
-                # self.logger.imwrite("detect_images/" + str(CnnCounter.value) + ".jpg", frame[0])
                 processingCNN.value = False
         detectorOutQ.put(self.stopSignal)
         self.logger.info("Done Detector: " + str(detectorInQ.qsize()), True)
@@ -315,36 +317,38 @@ class Arbiter:
                     break
                 fps.update()
 
-                # Decode
-                frameNum = im[1]
-                inputTime = im[2] - self.startTime
-                trackOutTime = im[3] - self.startTime
-                frameDetectNum = im[4]
-                if (im[5] == "x"):
-                    im[5] = im[2]
-                detectOutTime = im[5] - self.startTime
-                detectCount = im[6]
-                detection = im[7]
-                boxesTrack = im[8]
-                succesTrack = im[9]
-                clasTrack = im[10]
+                if (self.debugMode):
 
-                if (len(boxesTrack) != 0):
-                    boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
-                                             boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
-                boxesGT, newDetection = self.evaluate(detection, im[0], frameNum, frameDetectNum, lastFrameDetectNum,
-                                                      boxesTrack, clasTrack)
-                self.logger.imwrite(format(frameNum, '05d') + ".jpg",
-                                    self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT, newDetection))
-                self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
-                    inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
-                    trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
-                    detectOutTime - lastDetectOutTime) + ", " + str(trackOutTime - inputTime) + ", " + str(
-                    trackOutTime - detectOutTime))
-                lastInputTime = inputTime
-                lastTrackOutTime = trackOutTime
-                lastDetectOutTime = detectOutTime
-                lastFrameDetectNum = frameDetectNum
+                    # Decode
+                    frameNum = im[1]
+                    inputTime = im[2] - self.startTime
+                    trackOutTime = im[3] - self.startTime
+                    frameDetectNum = im[4]
+                    if (im[5] == "x"):
+                        im[5] = im[2]
+                    detectOutTime = im[5] - self.startTime
+                    detectCount = im[6]
+                    detection = im[7]
+                    boxesTrack = im[8]
+                    succesTrack = im[9]
+                    clasTrack = im[10]
+
+                    if (len(boxesTrack) != 0):
+                        boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
+                                                 boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
+                    boxesGT, newDetection = self.evaluate(detection, im[0], frameNum, frameDetectNum, lastFrameDetectNum,
+                                                          boxesTrack, clasTrack)
+                    self.logger.imwrite(format(frameNum, '05d') + ".jpg",
+                                        self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT, newDetection))
+                    self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
+                        inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
+                        trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
+                        detectOutTime - lastDetectOutTime) + ", " + str(trackOutTime - inputTime) + ", " + str(
+                        trackOutTime - detectOutTime))
+                    lastInputTime = inputTime
+                    lastTrackOutTime = trackOutTime
+                    lastDetectOutTime = detectOutTime
+                    lastFrameDetectNum = frameDetectNum
         self.logger.info("Done Get result: " + str(resultQ.qsize()), True)
         fps.stop()
         self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()), True)

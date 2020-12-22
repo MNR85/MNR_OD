@@ -43,7 +43,7 @@ class Detector:
         self.cpuStageFeed = Queue(maxsize=1)
         self.gpuStageFeed = Queue(maxsize=0)
         self.input_geometry_ = []
-        self.input_geometry_ = [300, 300]  # self.net.params[0][0].data.shape
+        self.input_geometry_ = (300, 300, 3) #[300, 300]  # self.net.params[0][0].data.shape
         self.lastDetections = []
         self.trackDict = {}
 
@@ -63,8 +63,8 @@ class Detector:
         self.netIsInit.value = True
 
     def transformInput(self, image):
-        image = cv2.resize(image, (self.input_geometry_[
-                           0], self.input_geometry_[1]))
+        if ( image.shape != self.input_geometry_):
+            image = cv2.resize(image, (self.input_geometry_[0], self.input_geometry_[1]))
         image = image - 127.5
         image = image * 0.007843
         image = image.astype(np.float32)
