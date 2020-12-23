@@ -9,7 +9,7 @@ prototxt=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt" "ssd_m
 evalData=("test_images/ILSVRC/ILSVRC2017_train_00006000" "test_images/ILSVRC/ILSVRC2017_train_00024000" "test_images/ILSVRC/ILSVRC2017_train_00066000")
 hw=("gpu" "cpu")
 methode=("serial" "pipeline")
-fixedRatio=(10)
+fixedRatio=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 20 25)
 echo "Dynamic portion $(date)">>results/runLog.log
 for p in "${prototxt[@]}"; do
     pFile="-p $p"
@@ -27,20 +27,19 @@ for p in "${prototxt[@]}"; do
                 else
                     sMode=""
                 fi
-                for r in "${fixedRatio[@]}"; do
-                    ratio="-r $r"
-                    cmd="python3 caffeOD.py -d -e $pFile $vFile $gMode $sMode"
-                    echo "$cmd"
-                    echo "$cmd">>results/runLog.log
-                    eval $cmd
-                done
-
+                cmd="python3 caffeOD.py $pFile $vFile $gMode $sMode"
+                cmdDebug="$cmd -d -e"
+                echo "$cmd"
+                echo "$cmd">>results/runLog.log
+                eval $cmd
+                echo "$cmdDebug"
+                echo "$cmdDebug">>results/runLog.log
+                eval $cmdDebug
             done
         done
     done
 done
 echo "Static portion $(date)">>results/runLog.log
-fixedRatio=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 20 25)
 for p in "${prototxt[@]}"; do
     pFile="-p $p"
     for e in "${evalData[@]}"; do
@@ -59,13 +58,18 @@ for p in "${prototxt[@]}"; do
                 fi
                 for r in "${fixedRatio[@]}"; do
                     ratio="-r $r"
-                    cmd="python3 caffeOD.py -d -e $pFile $vFile $gMode $sMode" #$ratio"
+                    cmd="python3 caffeOD.py $pFile $vFile $gMode $sMode $ratio"
+                    cmdDebug="$cmd -d -e"
                     echo "$cmd"
                     echo "$cmd">>results/runLog.log
                     eval $cmd
+                    echo "$cmdDebug"
+                    echo "$cmdDebug">>results/runLog.log
+                    eval $cmdDebug
                 done
-
             done
         done
     done
 done
+
+echo "1" | sudo -S shutdown now -h
