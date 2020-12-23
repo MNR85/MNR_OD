@@ -8,9 +8,10 @@ from multiprocessing import Queue, current_process
 import sys
 
 class MNR_logger():
-    def __init__(self, rootPath="results", enable=True):
+    def __init__(self, rootPath="results", postfix="", enable=True):
         self.rootPath=rootPath
-        self.childPath=self.rootPath+"/"+datetime.now().strftime("%m%d%Y_%H%M%S")+"_"+platform.node()
+        self.postfix=postfix
+        self.childPath=self.rootPath+"/"+datetime.now().strftime("%m%d%Y_%H%M%S")+"_"+self.postfix+"_"+platform.node()
         self.trackPath=self.childPath+"/trackOut"
         self.detectPath = self.childPath + "/DetectOut"
         self.enable=enable
@@ -24,9 +25,9 @@ class MNR_logger():
         os.makedirs(self.childPath)
         os.makedirs(self.trackPath)
         os.makedirs(self.detectPath)
-        self.fArbiterResults = open(self.childPath + "/arbiter_result.csv", "w")
-        self.fEval = open(self.childPath + "/eval.csv", "w")
-        self.fAll = open(self.childPath + "/all.log", "w")
+        self.fArbiterResults = open(self.childPath + "/arbiter_result_"+self.postfix+".csv", "w")
+        self.fEval = open(self.childPath + "/eval_"+self.postfix+".csv", "w")
+        self.fAll = open(self.childPath + "/all_"+self.postfix+".log", "w")
         strCSV = "frameNumber, framDetectNum, detectCount, inputTime, inputTimeDiff, trackOutTime, trackOutTimeDiff , detectOutTime, detectOutTimeDiff, latency, TDLatency"
 
         self.platformNod=platform.node()

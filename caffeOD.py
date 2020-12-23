@@ -44,7 +44,8 @@ fixedTracker=True
 # trackType='csrt'
 
 # -------------- Objs
-logger=MNR_logger("results")
+loggerPostfix=str(int(args['gpu']))+str(int(args['serial']))+str(int(fixedRatio))+str(int(args['debug']))+str(int(args['eval']))+str(args['ratio'])
+logger=MNR_logger("results",loggerPostfix)
 
 arbiter = Arbiter(args['prototxt'], args['model'], args['gpu'], args['serial'], args['tracker'],fixedTracker, logger, args['eval'], args['annotation'], args['ratio'], fixedRatio, args['debug'], )
 # gst_str = ('v4l2src device=/dev/video{} ! '

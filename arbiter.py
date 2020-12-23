@@ -145,20 +145,17 @@ class Arbiter:
                 if (frameNum == self.frameDetectNum + 1):
                     self.clasTrack = self.cvTracker.refreshTrack(frame, self.detection, frameNum)
                 (succesTrack, boxesTrack) = self.cvTracker.track(frame)
-                if(self.debugMode):
+                if (self.eval and len(boxesTrack) != 0):
+                    boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1],
+                                             boxesTrack[:, 0] + boxesTrack[:, 2],
+                                             boxesTrack[:, 1] + boxesTrack[:,
+                                                                3]]).transpose()
+                if (self.debugMode):
                     self.trackOutTime = time.time() - self.startTime
-                    if (len(boxesTrack) != 0):
-                        boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1],
-                                                 boxesTrack[:, 0] + boxesTrack[:, 2],
-                                                 boxesTrack[:, 1] + boxesTrack[:,
-                                                                    3]]).transpose()
-            if (self.debugMode):
+            if (self.eval):
                 boxesGT, newDetection = self.evaluate(self.detection, frame, frameNum,
                                                       self.frameDetectNum, self.lastFrameDetectNum,
                                                       boxesTrack, self.clasTrack)
-                self.logger.imwrite(format(frameNum, '05d') + ".jpg",
-                                    self.draw(frame, self.detection, succesTrack, boxesTrack,
-                                              boxesGT, newDetection))
                 self.logger.csv(str(frameNum) + ", " + str(self.frameDetectNum) + ", " + str(
                     self.detectCount) + ", " + str(
                     inputTime) + ", " + str(inputTime - self.lastInputTime) + ", " + str(
@@ -172,6 +169,10 @@ class Arbiter:
                 self.lastTrackOutTime = self.trackOutTime
                 self.lastDetectOutTime = self.detectOutTime
                 self.lastFrameDetectNum = self.frameDetectNum
+                if (self.debugMode):
+                    self.logger.imwrite(format(frameNum, '05d') + ".jpg",
+                                        self.draw(frame, self.detection, succesTrack, boxesTrack,
+                                                  boxesGT, newDetection))
             self.fps.update()
         else:
             while (self.fixedRatio and (frameNum % self.detectTrackRatio == 0) and self.processingCNN.value):
@@ -272,7 +273,7 @@ class Arbiter:
     def evaluate(self, detection, image, frameNum, frameDetectNum, lastFrameDetectNum, boxesTrack, clasTrack):
         boxesGT = []
         newDetection = False
-        if (self.eval and len(detection) != 0):
+        if (len(detection) != 0):
             h = image.shape[0]
             w = image.shape[1]
             boxesGT, labelsGT, trackIdsGT = self.readAnnotation(frameNum, w, h)
@@ -316,9 +317,7 @@ class Arbiter:
                 if (im == self.stopSignal):
                     break
                 fps.update()
-
-                if (self.debugMode):
-
+                if (self.eval):
                     # Decode
                     frameNum = im[1]
                     inputTime = im[2] - self.startTime
@@ -337,9 +336,7 @@ class Arbiter:
                         boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
                                                  boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
                     boxesGT, newDetection = self.evaluate(detection, im[0], frameNum, frameDetectNum, lastFrameDetectNum,
-                                                          boxesTrack, clasTrack)
-                    self.logger.imwrite(format(frameNum, '05d') + ".jpg",
-                                        self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT, newDetection))
+                                                              boxesTrack, clasTrack)
                     self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
                         inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
                         trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
@@ -349,6 +346,9 @@ class Arbiter:
                     lastTrackOutTime = trackOutTime
                     lastDetectOutTime = detectOutTime
                     lastFrameDetectNum = frameDetectNum
+                    if (self.debugMode):
+                        self.logger.imwrite(format(frameNum, '05d') + ".jpg",
+                                            self.draw(im[0], detection, succesTrack, boxesTrack, boxesGT, newDetection))
         self.logger.info("Done Get result: " + str(resultQ.qsize()), True)
         fps.stop()
         self.logger.info("Get result: elasped time: {:.2f}".format(fps.elapsed()), True)
