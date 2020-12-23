@@ -123,6 +123,9 @@ class Arbiter:
                     self.resultQ.qsize()))
                 self.logger.flush()
                 time.sleep(1)
+            self.logger.info("Image in detectorImage for flush: " + str(self.detectorImage.qsize()))
+            while (self.detectorImage.qsize() > 0):
+                self.detectorImage.get()
             self.detectorP.join()
             self.trackerP.join()
             self.getResultP.join()
