@@ -181,7 +181,8 @@ class Arbiter:
                     not self.fixedRatio or frameNum % self.detectTrackRatio == 0)):  # and counter%60==0):
                 if (self.debugMode):
                     remainTrackQ = self.trackerQ.qsize()
-                    self.logger.info("will add " + str(self.imageQ.qsize()) + ", remained from last: " + str(remainTrackQ))
+                    self.logger.info(
+                        "will add " + str(self.imageQ.qsize()) + ", remained from last: " + str(remainTrackQ))
                 while (not self.trackerQ.empty()):  # empty Q wait for getting tracker
                     time.sleep(0.001)
                 while (not self.imageQ.empty()):  # put all image in tracker (image between current cnn and last cnn)
@@ -203,14 +204,18 @@ class Arbiter:
             if (not detectorInQ.empty()):
                 processingCNN.value = True
                 if (detectorInQ.qsize() != 1):
-                    self.logger.error("Fatal error, detectorInQ has more than 1 frame!!")
-                    qsize = detectorInQ.qsize()
+                    self.logger.Warning("Check in progress... detectorInQ has more than 1 frame!!")
                     imagesInQ = ""
-                    for i in range(1, qsize):
+                    unwantedFrameCount = 0
+                    for i in range(1, detectorInQ.qsize()):
                         tmp = detectorInQ.get()
-                        imagesInQ = imagesInQ + str(frame[1]) + " ,"
+                        if (tmp != self.stopSignal):
+                            unwantedFrameCount = unwantedFrameCount + 1
+                            imagesInQ = imagesInQ + str(frame[1]) + " ,"
                         detectorInQ.put(tmp)
-                    self.logger.error("We had " + str(qsize) + " image that were from numbers: " + imagesInQ)
+                    if (unwantedFrameCount > 1):
+                        self.logger.error("Fatal error. We had " + str(
+                            unwantedFrameCount) + " image that were from numbers: " + imagesInQ)
                 frame = detectorInQ.get()
                 if (frame == self.stopSignal):
                     break
@@ -221,7 +226,6 @@ class Arbiter:
         self.logger.info("Done Detector: " + str(detectorInQ.qsize()), True)
 
     def trackerThread(self, detectorOutQ, detectorImage, trackerQ, resultQ):
-        # track_id_list = deque(['1', '2', '3', '4', '5', '6', '7', '7', '8', '9', '10'])
         detection = []
         priorClass = []
         detectionFrameNum = -1
@@ -235,7 +239,16 @@ class Arbiter:
                 break
             if (not detectorOutQ.empty()):
                 if (detectorOutQ.qsize() > 1):
-                    self.logger.error("Tracker can not keep up to detector: " + str(detectorOutQ.qsize()))
+                    unwantedDetectorOut = 0
+                    imagesInQ = ""
+                    for i in range(1, detectorOutQ.qsize()):
+                        tmp = detectorOutQ.get()
+                        if (tmp != self.stopSignal):
+                            unwantedDetectorOut = unwantedDetectorOut + 1
+                            imagesInQ = imagesInQ + str(tmp[1]) + " ,"
+                    if (unwantedDetectorOut > 1):
+                        self.logger.error("Fatal error. Tracker can not keep up to detector: " + str(
+                            detectorOutQ.qsize()) + " image that were from numbers: " + imagesInQ)
                 detectionOut = detectorOutQ.get()
                 if (detectionOut == self.stopSignal):
                     self.logger.info("see detectorOut done", True)
@@ -246,7 +259,9 @@ class Arbiter:
                 detection = detectionOut[0]
                 detectionCount = len(detection[0, 0, :, 1]) if detection[0, 0, :, 1][0] != -1 else 0
                 frame = detectorImage.get()
-                priorClass = self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
+                tmpPriorClass = self.cvTracker.refreshTrack(frame, detection, detectionFrameNum)
+                if ( tmpPriorClass != [] ):
+                    priorClass = tmpPriorClass
             if (not trackerQ.empty()):
                 frame = trackerQ.get()
                 if (frame == self.stopSignal):
@@ -257,7 +272,7 @@ class Arbiter:
                 if (frame[1]):
                     if (len(boxes) != len(priorClass)):
                         self.logger.error(
-                            "Unmatched track class and box number for image: " + str(frame[2]) + "->" + str(
+                            "Fatal error. Unmatched track class and box number for image: " + str(frame[2]) + "->" + str(
                                 len(boxes)) + ":" + str(len(priorClass)))
                     # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
                     result = [frame[0], frame[2], frame[3], time.time(), detectionFrameNum, detectionTime,
@@ -334,10 +349,12 @@ class Arbiter:
                     clasTrack = im[10]
 
                     if (len(boxesTrack) != 0):
-                        boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
-                                                 boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
-                    boxesGT, newDetection = self.evaluate(detection, im[0], frameNum, frameDetectNum, lastFrameDetectNum,
-                                                              boxesTrack, clasTrack)
+                        boxesTrack = np.asarray(
+                            [boxesTrack[:, 0], boxesTrack[:, 1], boxesTrack[:, 0] + boxesTrack[:, 2],
+                             boxesTrack[:, 1] + boxesTrack[:, 3]]).transpose()
+                    boxesGT, newDetection = self.evaluate(detection, im[0], frameNum, frameDetectNum,
+                                                          lastFrameDetectNum,
+                                                          boxesTrack, clasTrack)
                     self.logger.csv(str(frameNum) + ", " + str(frameDetectNum) + ", " + str(detectCount) + ", " + str(
                         inputTime) + ", " + str(inputTime - lastInputTime) + ", " + str(trackOutTime) + ", " + str(
                         trackOutTime - lastTrackOutTime) + ", " + str(detectOutTime) + ", " + str(
