@@ -315,6 +315,7 @@ class Arbiter:
             if (not resultQ.empty()):
                 im = resultQ.get()
                 if (im == self.stopSignal):
+                    self.logger.info("see trackerOut done", True)
                     break
                 fps.update()
                 if (self.eval):
