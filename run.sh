@@ -31,7 +31,7 @@ for p in "${prototxt[@]}"; do
                 else
                     sMode=""
                 fi
-                if [ "$currentPoint" -gt "$checkPoint" ]; then
+                if [[ $currentPoint -gt $checkPoint ]]; then
                     cmd="python3 caffeOD.py $pFile$vFile$gMode$sMode"
                     cmdDebug="$cmd-d -e"
                     echo "$currentPoint - $cmd"
@@ -66,7 +66,7 @@ for p in "${prototxt[@]}"; do
                 fi
                 for r in "${fixedRatio[@]}"; do
                     ratio="-r $r"
-                    if [ "$currentPoint" -gt "$checkPoint" ]; then
+                    if [[ $currentPoint -gt $checkPoint ]]; then
                       cmd="python3 caffeOD.py $pFile $vFile $gMode $sMode $ratio"
                       cmdDebug="$cmd -d -e"
                       echo "$currentPoint - $cmd"
