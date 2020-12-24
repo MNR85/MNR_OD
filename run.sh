@@ -41,7 +41,7 @@ for p in "${prototxt[@]}"; do
                     echo "$currentPoint - $cmdDebug">>results/runLog.log
                     eval $cmdDebug
                 fi
-                currentPoint=$currentPoint+1
+                currentPoint=$((currentPoint+1))
                 echo $currentPoint>results/checkPoint
             done
         done
@@ -76,7 +76,7 @@ for p in "${prototxt[@]}"; do
                       echo "$currentPoint - $cmdDebug">>results/runLog.log
                       eval $cmdDebug
                     fi
-                    currentPoint=$currentPoint+1
+                    currentPoint=$((currentPoint+1))
                     echo $currentPoint>results/checkPoint
                 done
             done
