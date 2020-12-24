@@ -308,10 +308,10 @@ class Arbiter:
                     continue
                 (success, boxes) = self.cvTracker.track(frame[0])
                 if (frame[1]):
-                    if (len(success) != len(priorClass)):
+                    if (len(boxes) != len(priorClass)):
                         self.logger.error(
                             "Fatal error. Unmatched track class and box number for image: " + str(frame[2]) + "->" + str(
-                                len(success)) + ":" + str(len(priorClass)))
+                                len(boxes)) + ":" + str(len(priorClass)))
                     # frame frameNum frameInputTime, trackOutTime, detectNum, detectOutTime
                     result = [frame[0], frame[2], frame[3], time.time(), detectionFrameNum, detectionTime,
                               detectionCount, detection, boxes, success, priorClass]
