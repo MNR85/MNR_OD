@@ -128,26 +128,26 @@ class Arbiter:
                 time.sleep(1)
                 watchDog=watchDog+1
                 if (watchDog>5):
-                    self.logger.Err("Something went wront. stuck at processes")
+                    self.logger.error("Something went wront. stuck at processes")
                     break
             self.logger.info("Image in detectorImage for flush: " + str(self.detectorImage.qsize()))
             while (self.detectorImage.qsize() > 0):
                 self.detectorImage.get()
             if(watchDog>5):
-                self.logger.Warn("Starting emergency killing processes")
-                self.logger.Warn("Image in trackerQ for flush: " + str(self.trackerQ.qsize()))
+                self.logger.warning("Starting emergency killing processes")
+                self.logger.warning("Image in trackerQ for flush: " + str(self.trackerQ.qsize()))
                 while (self.trackerQ.qsize() > 0):
                     self.trackerQ.get()
-                self.logger.Warn("Image in detectorInQ for flush: " + str(self.detectorInQ.qsize()))
+                self.logger.warning("Image in detectorInQ for flush: " + str(self.detectorInQ.qsize()))
                 while (self.detectorInQ.qsize() > 0):
                     self.detectorInQ.get()
-                self.logger.Warn("Image in detectorOutQ for flush: " + str(self.detectorOutQ.qsize()))
+                self.logger.warning("Image in detectorOutQ for flush: " + str(self.detectorOutQ.qsize()))
                 while (self.detectorOutQ.qsize() > 0):
                     self.detectorOutQ.get()
-                self.logger.Warn("Image in resultQ for flush: " + str(self.resultQ.qsize()))
+                self.logger.warning("Image in resultQ for flush: " + str(self.resultQ.qsize()))
                 while (self.resultQ.qsize() > 0):
                     self.resultQ.get()
-                self.logger.Warn("Terminating processes")
+                self.logger.warning("Terminating processes")
                 self.detectorP.terminate()
                 self.trackerP.terminate()
                 self.getResultP.terminate()
@@ -237,7 +237,7 @@ class Arbiter:
             if (not detectorInQ.empty()):
                 processingCNN.value = True
                 if (detectorInQ.qsize() != 1):
-                    self.logger.Warning("Check in progress... detectorInQ has more than 1 frame!!")
+                    self.logger.warning("Check in progress... detectorInQ has more than 1 frame!!")
                     imagesInQ = ""
                     unwantedFrameCount = 0
                     myStack = []
