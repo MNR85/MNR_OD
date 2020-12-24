@@ -101,8 +101,9 @@ class Arbiter:
             self.startTime = time.time()
             self.getResultP.start()
             self.trackerCounterQ = 0
-        self.logger.startTime = time.time()
+        self.cvTracker.logger.startTime = self.logger.startTime = time.time()
         self.logger.info('Finished initilization')
+        self.logger.flush()
 
     def stop(self):
         self.logger.info("Stoping.")
@@ -117,18 +118,43 @@ class Arbiter:
             while (self.imageQ.qsize() > 0):
                 self.imageQ.get()
             self.logger.flush()
+            watchDog=0
             while self.trackerQ.qsize() > 0 or self.detectorInQ.qsize() > 0 or self.resultQ.qsize() > 0:
                 self.logger.info("DetectQ: " + str(self.detectorInQ.qsize()) + ", TrackQ: " + str(
                     self.trackerQ.qsize()) + ", Refresh Q: " + str(self.detectorOutQ.qsize()) + ", Result Q: " + str(
                     self.resultQ.qsize()))
                 self.logger.flush()
                 time.sleep(1)
+                watchDog=watchDog+1
+                if (watchDog>5):
+                    self.logger.Err("Something went wront. stuck at processes")
+                    break
             self.logger.info("Image in detectorImage for flush: " + str(self.detectorImage.qsize()))
             while (self.detectorImage.qsize() > 0):
                 self.detectorImage.get()
-            self.detectorP.join()
-            self.trackerP.join()
-            self.getResultP.join()
+            if(watchDog>5):
+                self.logger.Warn("Starting emergency killing processes")
+                self.logger.Warn("Image in trackerQ for flush: " + str(self.trackerQ.qsize()))
+                while (self.trackerQ.qsize() > 0):
+                    self.trackerQ.get()
+                self.logger.Warn("Image in detectorInQ for flush: " + str(self.detectorInQ.qsize()))
+                while (self.detectorInQ.qsize() > 0):
+                    self.detectorInQ.get()
+                self.logger.Warn("Image in detectorOutQ for flush: " + str(self.detectorOutQ.qsize()))
+                while (self.detectorOutQ.qsize() > 0):
+                    self.detectorOutQ.get()
+                self.logger.Warn("Image in resultQ for flush: " + str(self.resultQ.qsize()))
+                while (self.resultQ.qsize() > 0):
+                    self.resultQ.get()
+                self.logger.Warn("Terminating processes")
+                self.detectorP.terminate()
+                self.trackerP.terminate()
+                self.getResultP.terminate()
+            else:
+                self.logger.Info("Joining processes")
+                self.detectorP.join()
+                self.trackerP.join()
+                self.getResultP.join()
             self.logger.info("All process finished")
             self.logger.info("With pipeline")
 
@@ -210,17 +236,21 @@ class Arbiter:
                     self.logger.Warning("Check in progress... detectorInQ has more than 1 frame!!")
                     imagesInQ = ""
                     unwantedFrameCount = 0
+                    myStack = []
                     for i in range(1, detectorInQ.qsize()):
                         tmp = detectorInQ.get()
+                        myStack.append(tmp)
                         if (tmp != self.stopSignal):
                             unwantedFrameCount = unwantedFrameCount + 1
-                            imagesInQ = imagesInQ + str(frame[1]) + " ,"
-                        detectorInQ.put(tmp)
+                            imagesInQ = imagesInQ + str(tmp[1]) + " ,"
+                    for i in range(1, len(myStack)):
+                        detectorInQ.put(myStack.pop())
                     if (unwantedFrameCount > 1):
                         self.logger.error("Fatal error. We had " + str(
                             unwantedFrameCount) + " image that were from numbers: " + imagesInQ)
                 frame = detectorInQ.get()
                 if (frame == self.stopSignal):
+                    self.logger.info("see detectorIn done", True)
                     break
                 detections = detector.serialDetector(frame[0])
                 detectorOutQ.put([detections['detection_out'], frame[1]])  # detection out, frame num
@@ -244,11 +274,15 @@ class Arbiter:
                 if (detectorOutQ.qsize() > 1):
                     unwantedDetectorOut = 0
                     imagesInQ = ""
+                    myStack = []
                     for i in range(1, detectorOutQ.qsize()):
                         tmp = detectorOutQ.get()
+                        myStack.append(tmp)
                         if (tmp != self.stopSignal):
                             unwantedDetectorOut = unwantedDetectorOut + 1
                             imagesInQ = imagesInQ + str(tmp[1]) + " ,"
+                    for i in range(1, len(myStack)):
+                        detectorOutQ.put(myStack.pop())
                     if (unwantedDetectorOut > 1):
                         self.logger.error("Fatal error. Tracker can not keep up to detector: " + str(
                             detectorOutQ.qsize()) + " image that were from numbers: " + imagesInQ)

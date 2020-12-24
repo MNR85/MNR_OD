@@ -24,10 +24,11 @@ class cvTracker():
         self.trackType = trackType
         self.trackers = cv2.MultiTracker_create()
 
-        if (logger is None):
-            self.print = print
-        else:
-            self.print = logger.warning
+        self.logger = logger
+        # if (logger is None):
+        #     self.print = print
+        # else:
+        #     self.print = logger.warning
         # self.totalT=0
 
     def refreshTrack(self, frame, detection, detectionFrameNum):
@@ -40,7 +41,7 @@ class cvTracker():
         # box, conf, cls = (box.astype(np.int32), conf, cls)
         box = (detection[0, 0, :, 3:7] * np.array([w, h, w, h])).astype(np.int32)
         if (conf[0] < 0):
-            self.print('bad detection at frame: ' + str(detectionFrameNum) + ', continue tracking')
+            self.logger.info('bad detection at frame: ' + str(detectionFrameNum) + ', continue tracking')
             return classes
 
         # initialize OpenCV's special multi-object tracker
