@@ -151,7 +151,7 @@ class Arbiter:
                 self.trackerP.terminate()
                 self.getResultP.terminate()
             else:
-                self.logger.Info("Joining processes")
+                self.logger.info("Joining processes")
                 self.detectorP.join()
                 self.trackerP.join()
                 self.getResultP.join()
