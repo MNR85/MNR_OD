@@ -22,6 +22,7 @@ class cvTracker():
                         'motorbike', 'person', 'pottedplant',
                         'sheep', 'sofa', 'train', 'tvmonitor')
         self.trackType = trackType
+        self.trackersCount = 0
         self.trackers = cv2.MultiTracker_create()
 
         self.logger = logger
