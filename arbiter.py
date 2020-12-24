@@ -75,6 +75,7 @@ class Arbiter:
             self.lastTrackOutTime = time.time() - self.startTime
             self.lastDetectOutTime = time.time() - self.startTime
             self.lastFrameDetectNum = -1
+            self.clasTrack = []
             self.fps = FPS().start()
         else:
             self.stopSignal = "done"
@@ -173,7 +174,9 @@ class Arbiter:
                 (succesTrack, boxesTrack, self.clasTrack) = ([], [], [])
             else:  # tracking
                 if (frameNum == self.frameDetectNum + 1):
-                    self.clasTrack = self.cvTracker.refreshTrack(frame, self.detection, frameNum)
+                    tmpPriorClass = self.cvTracker.refreshTrack(frame, self.detection, frameNum)
+                    if (tmpPriorClass != []):
+                        self.clasTrack = tmpPriorClass
                 (succesTrack, boxesTrack) = self.cvTracker.track(frame)
                 if (self.eval and len(boxesTrack) != 0):
                     boxesTrack = np.asarray([boxesTrack[:, 0], boxesTrack[:, 1],
