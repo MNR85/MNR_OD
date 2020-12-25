@@ -162,13 +162,13 @@ class Arbiter:
 
     def newImage(self, frame, frameNum):
         if (self.serialProcessing):  # all pipeline process are mixed here!
-            if self.debugMode:
+            if self.eval:
                 inputTime = time.time() - self.startTime
 
             if (frameNum % self.detectTrackRatio == 0):  # detection
                 self.detection = self.detector.serialDetector(frame)['detection_out']
                 self.frameDetectNum = frameNum
-                if self.debugMode:
+                if self.eval:
                     self.detectOutTime = time.time() - self.startTime
                     self.detectCount = len(self.detection[0, 0, :, 1]) if self.detection[0, 0, :, 1][0] != -1 else 0
                 (succesTrack, boxesTrack, self.clasTrack) = ([], [], [])
@@ -183,7 +183,7 @@ class Arbiter:
                                              boxesTrack[:, 0] + boxesTrack[:, 2],
                                              boxesTrack[:, 1] + boxesTrack[:,
                                                                 3]]).transpose()
-                if (self.debugMode):
+                if (self.eval):
                     self.trackOutTime = time.time() - self.startTime
             if (self.eval):
                 boxesGT, newDetection = self.evaluate(self.detection, frame, frameNum,
