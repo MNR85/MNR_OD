@@ -22,9 +22,8 @@ class cvTracker():
                         'motorbike', 'person', 'pottedplant',
                         'sheep', 'sofa', 'train', 'tvmonitor')
         self.trackType = trackType
-        self.trackersCount = 0
         self.trackers = cv2.MultiTracker_create()
-
+        self.classes = []
         self.logger = logger
 
     def refreshTrack(self, frame, detection, detectionFrameNum):
@@ -36,10 +35,9 @@ class cvTracker():
         box = (detection[0, 0, :, 3:7] * np.array([w, h, w, h])).astype(np.int32)
         if (conf[0] < 0):
             self.logger.info('bad detection at frame: ' + str(detectionFrameNum) + ', continue tracking')
-            return classes
+            return self.classes
         # initialize OpenCV's special multi-object tracker
         self.trackers = cv2.MultiTracker_create()
-        self.trackersCount = 0
         for i in range(len(cls)):
             if (conf[i] > 0.5):
                 tracker = self.OPENCV_OBJECT_TRACKERS[self.trackType]()
@@ -54,14 +52,12 @@ class cvTracker():
                     endY = h - 1
                 bbox = (startX, startY, endX - startX, endY - startY)
                 self.trackers.add(tracker, frame, bbox)
-                self.trackersCount = self.trackersCount+1
                 classes.append(cls[i])
+        self.classes = classes
         return classes
 
     def track(self, frame):
         # grab the updated bounding box coordinates (if any) for each
         # object that is being tracked
         (success, boxes) = self.trackers.update(frame)
-        if (len(boxes)!=self.trackersCount):
-            self.logger.error("Fatal error in cvTracker. "+str(len(boxes))+"!="+str(self.trackersCount), True)
         return (success, boxes)

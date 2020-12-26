@@ -11,9 +11,11 @@ class MNR_logger():
     def __init__(self, rootPath="results", postfix="", enable=True):
         self.rootPath=rootPath
         self.postfix=postfix
-        self.childPath=self.rootPath+"/"+datetime.now().strftime("%m%d%Y_%H%M%S")+"_"+self.postfix+"_"+platform.node()
+        self.ID=datetime.now().strftime("%m%d%Y_%H%M%S")+"_"+self.postfix+"_"+platform.node()
+        self.childPath=self.rootPath+"/"+self.ID
         self.trackPath=self.childPath+"/trackOut"
         self.detectPath = self.childPath + "/DetectOut"
+        self.resultPath = self.rootPath+"/results.csv"
         self.enable=enable
         self.msgQ = Queue(maxsize=0)
         self.startTime=0
@@ -22,6 +24,12 @@ class MNR_logger():
         self.startTime=startTime
         if not os.path.exists(self.rootPath):
             os.makedirs(self.rootPath)
+        if not os.path.isfile(self.resultPath):
+            self.resultFile = open(self.resultPath, "w")
+            self.resultFile.write("ID, frameCount, Data, Prototxt, HW, Method, Tracker, Detect/Track, FPS, Accuracy, Precision, Recall, TP, FN, FP, mem, gpu, cpu, \n")
+            self.resultFile.close()
+        self.resultFile = open(self.resultPath, "a")
+
         os.makedirs(self.childPath)
         os.makedirs(self.trackPath)
         os.makedirs(self.detectPath)
@@ -181,6 +189,15 @@ class MNR_logger():
         if(toFile):
             self.msgQ.put(data)
 
+    def result(self, msg, toSTDout=True, toFile=True):
+        msg=self.ID+", "+msg
+        data='{:30s}\t\t'.format("[Result] from ["+current_process().name+"]")+msg+" at "+str(time.time()-self.startTime)
+        if(toSTDout):
+            print(data)
+        if(toFile):
+            self.resultFile.write(msg+"\n")
+            self.msgQ.put(data)
+
     def csv(self, newLine):
         nowT=time.time()
         if(nowT-self.lastPlatformStatUpdate>1): # can do cpu measure only speedy
@@ -218,3 +235,4 @@ class MNR_logger():
         self.fArbiterResults.close()
         self.fEval.close()
         self.fAll.close()
+        self.resultFile.close()
