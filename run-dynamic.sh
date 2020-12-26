@@ -50,3 +50,4 @@ for p in "${prototxt[@]}"; do
     done
 done
 #echo "1" | sudo -S shutdown now -h
+
