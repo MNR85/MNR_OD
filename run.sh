@@ -7,12 +7,14 @@ if [ -f results/checkPoint ]; then
     checkPoint=$(cat results/checkPoint)
 fi
 echo "New run at $(date)">>results/runLog.log
-trackers=("mosse" "kcf" "tld" "medianflow" "csrt")
+#trackers=("mosse" "kcf" "tld" "medianflow" "csrt")
+trackers=("mosse" "medianflow")
 prototxt=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy.prototxt" "ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy_dwc.prototxt")
 evalData=("test_images/ILSVRC/ILSVRC2017_train_00006000" "test_images/ILSVRC/ILSVRC2017_train_00024000" "test_images/ILSVRC/ILSVRC2017_train_00066000")
 hw=("gpu" "cpu")
 methode=("serial" "pipeline")
-fixedRatio=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 20 25)
+#fixedRatio=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 20 25)
+fixedRatio=(1 5 10 15 20 25)
 currentPoint=0
 echo "Static portion $(date)">>results/runLog.log
 for p in "${prototxt[@]}"; do
