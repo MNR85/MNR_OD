@@ -16,25 +16,27 @@ fixedRatio=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 20 25)
 currentPoint=0
 echo "Static portion $(date)">>results/runLog.log
 for p in "${prototxt[@]}"; do
-    pFile="-p $p"
+    pFile="-p $p "
     for e in "${evalData[@]}"; do
-        vFile="-v ${e}.mp4 -a ${e}/"
+        vFile="-v ${e}.mp4 -a ${e}/ "
         for h in "${hw[@]}"; do
             if [ $h = "gpu" ]; then
-                gMode="-g"
+                gMode="-g "
             else
                 gMode=""
             fi
             for m in "${methode[@]}"; do
                 if [ $m = "serial" ]; then
-                    sMode="-s"
+                    sMode="-s "
                 else
                     sMode=""
                 fi
+                for t in "${trackers[@]}"; do
+                    tType="-t $t "
                 for r in "${fixedRatio[@]}"; do
-                    ratio="-r $r"
+                    ratio="-r $r "
                     if [[ $currentPoint -gt $checkPoint ]]; then
-                      cmd="python3 caffeOD.py $pFile $vFile $gMode $sMode $ratio"
+                      cmd="python3 caffeOD.py $pFile$vFile$gMode$sMode$tType$ratio"
                       cmdEval="$cmd-e"
                       cmdDebug="$cmd-d -e"
                       echo "$currentPoint - $cmd"
