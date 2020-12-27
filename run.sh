@@ -18,7 +18,7 @@ echo "Static portion $(date)">>results/runLog.log
 for p in "${prototxt[@]}"; do
     pFile="-p $p"
     for e in "${evalData[@]}"; do
-        vFil    e="-v ${e}.mp4 -a ${e}/"
+        vFile="-v ${e}.mp4 -a ${e}/"
         for h in "${hw[@]}"; do
             if [ $h = "gpu" ]; then
                 gMode="-g"
