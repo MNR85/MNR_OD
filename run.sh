@@ -33,20 +33,21 @@ for p in "${prototxt[@]}"; do
                 fi
                 for t in "${trackers[@]}"; do
                     tType="-t $t "
-                for r in "${fixedRatio[@]}"; do
-                    ratio="-r $r "
-                    if [[ $currentPoint -gt $checkPoint ]]; then
-                      cmd="python3 caffeOD.py $pFile$vFile$gMode$sMode$tType$ratio"
-                      cmdEval="$cmd-e"
-                      cmdDebug="$cmd-d -e"
-                      echo "$currentPoint - $cmd"
-                      echo "$currentPoint - $cmd">>results/runLog.log
-                      eval $cmd
-                      eval $cmdEval
-#                      eval $cmdDebug
-                    fi
-                    currentPoint=$((currentPoint+1))
-                    echo $currentPoint>results/checkPoint
+                    for r in "${fixedRatio[@]}"; do
+                        ratio="-r $r "
+                        if [[ $currentPoint -gt $checkPoint ]]; then
+                          cmd="python3 caffeOD.py $pFile$vFile$gMode$sMode$tType$ratio"
+                          cmdEval="$cmd-e"
+                          cmdDebug="$cmd-d -e"
+                          echo "$currentPoint - $cmd"
+                          echo "$currentPoint - $cmd">>results/runLog.log
+                          eval $cmd
+                          eval $cmdEval
+    #                      eval $cmdDebug
+                        fi
+                        currentPoint=$((currentPoint+1))
+                        echo $currentPoint>results/checkPoint
+                    done
                 done
             done
         done
