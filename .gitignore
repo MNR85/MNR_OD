@@ -2,4 +2,4 @@ ssd_mobilenet_v1_coco_2017_11_17/
 test_images/
 .idea/
 __pycache__/
-results/
+result-dynamic/results/

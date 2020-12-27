@@ -18,7 +18,7 @@ echo "Static portion $(date)">>results/runLog.log
 for p in "${prototxt[@]}"; do
     pFile="-p $p"
     for e in "${evalData[@]}"; do
-        vFile="-v ${e}.mp4 -a ${e}/"
+        vFil    e="-v ${e}.mp4 -a ${e}/"
         for h in "${hw[@]}"; do
             if [ $h = "gpu" ]; then
                 gMode="-g"
@@ -41,7 +41,7 @@ for p in "${prototxt[@]}"; do
                       echo "$currentPoint - $cmd">>results/runLog.log
                       eval $cmd
                       eval $cmdEval
-                      eval $cmdDebug
+#                      eval $cmdDebug
                     fi
                     currentPoint=$((currentPoint+1))
                     echo $currentPoint>results/checkPoint
