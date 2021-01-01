@@ -4,7 +4,7 @@ import time
 import cv2
 import platform
 import logging
-from multiprocessing import Queue, current_process
+from multiprocessing import Queue, current_process, Value, Array
 import sys
 
 class MNR_logger():
@@ -26,10 +26,9 @@ class MNR_logger():
             os.makedirs(self.rootPath)
         if not os.path.isfile(self.resultPath):
             self.resultFile = open(self.resultPath, "w")
-            self.resultFile.write("ID, frameCount, Data, Prototxt, HW, Method, Tracker, Detect/Track, FPS, Accuracy, Precision, Recall, TP, FN, FP, mem, gpu, cpu, \n")
+            self.resultFile.write("ID, frameCount, Data, Prototxt, HW, Method, Tracker, Detect/Track, FPS, Accuracy, Precision, Recall, TP, FN, FP, Power"+"\n")
             self.resultFile.close()
         self.resultFile = open(self.resultPath, "a")
-
         os.makedirs(self.childPath)
         os.makedirs(self.trackPath)
         os.makedirs(self.detectPath)
@@ -40,7 +39,7 @@ class MNR_logger():
 
         self.platformNod=platform.node()
         if (self.platformNod == "tx2-desktop"):
-            strCSV = strCSV + ", temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-SOC, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU"
+            platformStatCSV = ", temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-SOC, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU"
             # Resource usage
             gpuUsageFile = "/sys/devices/gpu.0/load"
             cpuUsageFile = "/proc/stat"
@@ -74,19 +73,33 @@ class MNR_logger():
             self.fpDDR = open(vdd_DDRpower)
             self.fpWifi = open(vdd_Wifipower)
         else:  # General computers
-            strCSV = strCSV + ", usage-Mem, usage-CPU"
+            platformStatCSV = ", usage-Mem, usage-CPU"
             cpuUsageFile = "/proc/stat"
             memUsageFile = "/proc/meminfo"
             self.fuCPU = open(cpuUsageFile, "r")
             self.fuMem = open(memUsageFile, "r")
-        self.fArbiterResults.write(strCSV + "\n")
+        self.fArbiterResults.write(strCSV+ platformStatCSV + "\n")
         self.fEval.write("frameNumber, totalMatched, totalMissed, totalWrong, matchedTrack, unmatchedTrack, unmatchedGTAtTrack, matchedDetect, unmatchedDetect, unmatchedGTAtDetect\n")
         # need for store previous state
         self.cpuTotal = {}
         self.cpuIdle = {}
         self.lastPlatformStat = ""
         self.lastPlatformStatUpdate=time.time()-1
-        self.cpuStat()
+        # # check value before
+        # if (self.platformNod == "tx2-desktop"):
+        #     firstPlatformStat = self.tegrastat()[:-1]
+        # else:
+        #     firstPlatformStat = self.platformstat()[:-1]
+        # time.sleep(1)
+        # if (self.platformNod == "tx2-desktop"):
+        #     self.firstPlatformStat = [(e2 + e1) / 2 for (e2, e1) in
+        #                               zip(self.tegrastat()[:-1], firstPlatformStat)]
+        # else:
+        #     self.firstPlatformStat = [(e2 + e1)/2 for (e2, e1) in zip(self.platformstat()[:-1], firstPlatformStat)]
+        # self.averagePlatformStat = self.evalResult = Array('i', len(self.firstPlatformStat))#[0] * len(self.firstPlatformStat)
+        # self.averagePlatformStat = [0] * len(self.firstPlatformStat)
+        self.averagePowerStat = Value('f')
+        self.counterPowerStat = Value('i')
 
     def cpuStat(self):
         self.fuCPU.seek(0)
@@ -116,51 +129,66 @@ class MNR_logger():
 
     def platformstat(self):
         # ---- usage
-        cpuS = str(self.cpuStat())
-        memS = str(self.memStat())
-        return (", "+memS + ", " + cpuS)
+        cpuS = (self.cpuStat())
+        memS = (self.memStat())
+        return [memS, cpuS]
+        # if not hasattr(self, 'firstPlatformStat'):
+        #     return [memS, cpuS]
+        # else:
+        #     res = [e2-e1 for (e2,e1) in zip(self.firstPlatformStat, [memS])]
+        #     res.append(cpuS)
+        #     return res
 
     def tegrastat(self):
         # ---- usage
-        cpuS= str(self.cpuStat())
-        memS= str(self.memStat())
+        cpuS= (self.cpuStat())
+        memS= (self.memStat())
 
         self.fuGPU.seek(0)
-        gpuS=str(int(self.fuGPU.readline())/10)
+        gpuS=(int(self.fuGPU.readline())/10)
 
         # ----- temp
         self.ftCPUb.seek(0)
-        bcpuT=str(int(self.ftCPUb.readline())/1000)
+        bcpuT=(int(self.ftCPUb.readline())/1000)
 
         self.ftCPUm.seek(0)
-        mcpuT=str(int(self.ftCPUm.readline())/1000)
+        mcpuT=(int(self.ftCPUm.readline())/1000)
 
         self.ftGPU.seek(0)
-        gpuT=str(int(self.ftGPU.readline())/1000)
+        gpuT=(int(self.ftGPU.readline())/1000)
 
         # ----- power
         self.fpTotal.seek(0)
-        totalP=str(int(self.fpTotal.readline()))
+        totalP=(int(self.fpTotal.readline()))
 
         self.fpGPU.seek(0)
-        gpuP=str(int(self.fpGPU.readline()))
+        gpuP=(int(self.fpGPU.readline()))
 
         self.fpCPU.seek(0)
-        cpuP=str(int(self.fpCPU.readline()))
+        cpuP=(int(self.fpCPU.readline()))
 
         self.fpSOC.seek(0)
-        socP=str(int(self.fpSOC.readline()))
+        socP=(int(self.fpSOC.readline()))
 
         self.fpDDR.seek(0)
-        ddrP=str(int(self.fpDDR.readline()))
+        ddrP=(int(self.fpDDR.readline()))
 
         self.fpWifi.seek(0)
-        wifiP=str(int(self.fpWifi.readline()))
+        wifiP=(int(self.fpWifi.readline()))
+
+        self.averagePowerStat.value = totalP
+        self.counterPowerStat.value = self.counterPowerStat.value + 1
 
         ##
         # order is
         # , temp-GPU, temp-bCPU, temp-mCPU, power-Total, power-GPU, power-CPU, power-DDR, power-Wifi, usage-GPU, usage-Mem, usage-CPU
-        return (", "+gpuT+", "+bcpuT+", "+mcpuT+", "+totalP+", "+gpuP+", "+cpuP+", "+socP+", "+ddrP+", "+wifiP+", "+gpuS+", "+memS+", "+cpuS)
+        return [gpuT, bcpuT, mcpuT, totalP, gpuP, cpuP, socP, ddrP, wifiP, gpuS, memS, cpuS]
+        # if not hasattr(self, 'firstPlatformStat'):
+        #     return [gpuT, bcpuT, mcpuT, totalP, gpuP, cpuP, socP, ddrP, wifiP, gpuS, memS, cpuS]
+        # else:
+        #     res = [e2-e1 for (e2,e1) in zip(self.firstPlatformStat, [gpuT, bcpuT, mcpuT, totalP, gpuP, cpuP, socP, ddrP, wifiP, gpuS, memS])]
+        #     res.append(cpuS)
+        #     return res
 
     def imwrite(self, fileName, frame, isTrack=True):
         if(isTrack):
@@ -195,7 +223,11 @@ class MNR_logger():
         if(toSTDout):
             print(data)
         if(toFile):
-            self.resultFile.write(msg+"\n")
+            # self.averagePlatformStat = [a / self.counterPlatformStat.value for a in self.averagePlatformStat]
+            averagePowerStat=0
+            if(self.counterPowerStat.value!=0):
+                averagePowerStat = self.averagePowerStat.value/self.counterPowerStat.value
+            self.resultFile.write(msg+ "," + str(averagePowerStat)+"\n")
             self.msgQ.put(data)
 
     def csv(self, newLine):
@@ -206,11 +238,13 @@ class MNR_logger():
                 self.lastPlatformStat=self.tegrastat()
             else:
                 self.lastPlatformStat=self.platformstat()
-        self.fArbiterResults.write(newLine +self.lastPlatformStat+"\n")
+            # self.averagePlatformStat = [a+b for (a,b) in zip(self.averagePlatformStat, self.lastPlatformStat[:-1])]
+            # self.counterPlatformStat.value = self.counterPlatformStat.value+1
+        self.fArbiterResults.write(newLine+"," +str(self.lastPlatformStat)[1:-1]+"\n")
         # self.fArbiterResults.flush()
 
     def csvEval(self, newLine):
-        self.fEval.write(newLine +"\n")
+        self.fEval.write(newLine+"\n")
 
     def flush(self):
         msgQSize = sys.getsizeof(self.msgQ)
