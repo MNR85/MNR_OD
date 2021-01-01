@@ -8,7 +8,7 @@ if [ -f results/checkPoint ]; then
 fi
 echo "New run at $(date)">>results/runLog.log
 trackers=("mosse" "kcf" "tld" "medianflow" "csrt")
-models=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet_v2")
+models=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet_deploy" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet_v2_deploy")
 netType=("" "_dwc")
 evalData=("test_images/ILSVRC/ILSVRC2017_train_00006000" "test_images/ILSVRC/ILSVRC2017_train_00024000" "test_images/ILSVRC/ILSVRC2017_train_00066000")
 hw=("gpu" "cpu")
