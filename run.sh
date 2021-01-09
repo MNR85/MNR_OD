@@ -76,7 +76,7 @@ for h in "${hw[@]}"; do
                 cmdDebug="$cmd-d -e"
                 echo "$currentPoint - $cmd"
                 echo "$currentPoint - $cmd">>results/runLog.log
-                eval $cmd
+#                eval $cmd
                 eval $cmdEval
 #                eval $cmdDebug
               fi
