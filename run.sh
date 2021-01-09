@@ -7,7 +7,7 @@ if [ -f results/checkPoint ]; then
     checkPoint=$(cat results/checkPoint)
 fi
 echo "New run at $(date)">>results/runLog.log
-trackers=("mosse" "kcf" "tld" "medianflow" "csrt")
+trackers=("mosse" "medianflow")
 models=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet_deploy" "ssd_mobilenet_v1_coco_2017_11_17/shicai_mobilenet_v2_deploy")
 netType=("" "_dwc")
 evalData=("test_images/ILSVRC/ILSVRC2017_train_00006000" "test_images/ILSVRC/ILSVRC2017_train_00024000" "test_images/ILSVRC/ILSVRC2017_train_00066000")
@@ -47,7 +47,7 @@ for h in "${hw[@]}"; do
     done
   done
 done
-exit
+
 echo "Others $(date)">>results/runLog.log
 for h in "${hw[@]}"; do
   if [ $h = "gpu" ]; then
