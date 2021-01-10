@@ -7,7 +7,7 @@ if [ -f results/checkPoint ]; then
     checkPoint=$(cat results/checkPoint)
 fi
 echo "New run at $(date)">>results/runLog.log
-trackers=("mosse" "medianflow")
+trackers=("mosse" "medianflow" "csrt" "kcf" "tld")
 models=("ssd_mobilenet_v1_coco_2017_11_17/MobileNetSSD_deploy")
 netType=("" "_dwc")
 evalData=("test_images/ILSVRC/ILSVRC2017_train_00006000" "test_images/ILSVRC/ILSVRC2017_train_00024000" "test_images/ILSVRC/ILSVRC2017_train_00066000")
