@@ -38,8 +38,8 @@ fixedRatio=not (args['ratio'] is None)
 fixedRatio=True if args['serial'] else fixedRatio
 fixedTracker=True
 # ratio=10
-eval=True
-serial=True
+#eval=True
+#serial=True
 # gpu=True
 # trackType='csrt'
 
@@ -47,7 +47,7 @@ serial=True
 loggerPostfix=str(int(args['gpu']))+str(int(args['serial']))+str(int(fixedRatio))+str(int(args['debug']))+str(int(args['eval']))+str(args['ratio'])
 logger=MNR_logger("results",loggerPostfix)
 
-arbiter = Arbiter(args['prototxt'], args['model'], args['gpu'], args['serial'], args['tracker'],fixedTracker, logger, eval, args['annotation'], args['ratio'], fixedRatio, args['debug'], )
+arbiter = Arbiter(args['prototxt'], args['model'], args['gpu'], args['serial'], args['tracker'],fixedTracker, logger, args['eval'], args['annotation'], args['ratio'], fixedRatio, args['debug'], )
 # gst_str = ('v4l2src device=/dev/video{} ! '
 #                'video/x-raw, width=(int){}, height=(int){} ! '
 #                'videoconvert ! appsink').format(1, 1920, 1080)
